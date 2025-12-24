@@ -3,8 +3,8 @@ const path = require('path');
 
 const files = {
   load: 'performance-tests/k6/results/load.json',
-  stress: 'performance-tests/k6/results/stress.json',
-  perf: 'performance-tests/k6/results/performance.json'
+  performance: 'performance-tests/k6/results/performance.json',
+  security: 'performance-tests/k6/results/security.json'
 };
 
 const output = {};

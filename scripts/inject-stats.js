@@ -9,8 +9,8 @@ const replacements = {
   '{{PW_PASSED}}': pw.passed,
   '{{PW_FAILED}}': pw.failed,
   '{{K6_LOAD_PASSED}}': k6.load,
-  '{{K6_STRESS_PASSED}}': k6.stress,
-  '{{K6_PERF_PASSED}}': k6.perf,
+  '{{K6_STRESS_PASSED}}': 0, // No stress test in this workflow
+  '{{K6_PERF_PASSED}}': k6.performance,
   '{{LAST_UPDATED}}': new Date().toISOString(),
   '{{RUN_ID}}': process.env.GITHUB_RUN_NUMBER || 'local'
 };

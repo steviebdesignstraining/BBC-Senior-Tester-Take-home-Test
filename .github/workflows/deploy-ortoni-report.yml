@@ -3,8 +3,7 @@ name: Deploy Test Reports to GitHub Pages
 on:
   workflow_run:
     workflows:
-      - "k6 Performance Tests"
-      - "Playwright Tests"
+      - "Tests & Performance"
     branches: [main]
     types:
       - completed
@@ -42,28 +41,10 @@ jobs:
       # -------------------------------
       # Download k6 reports
       # -------------------------------
-      - name: Download k6 Load Test Report
+      - name: Download k6 Reports
         uses: actions/download-artifact@v4
         with:
-          name: k6-load-test-report
-          path: performance-tests/k6/reports
-
-      - name: Download k6 Stress Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-stress-test-report
-          path: performance-tests/k6/reports
-
-      - name: Download k6 Performance Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-performance-test-report
-          path: performance-tests/k6/reports
-
-      - name: Download k6 Security Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-security-test-report
+          name: k6-reports
           path: performance-tests/k6/reports
 
       # -------------------------------

@@ -1,0 +1,89 @@
+name: Tests & Performance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  playwright:
+    name: Playwright Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Playwright (ALL tests)
+        run: npx playwright test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          AUTH_KEY: ${{ secrets.AUTH_KEY }}
+
+      # ✅ Always generate Ortoni report
+      - name: Upload Ortoni Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ortoni-report
+          path: reports/
+
+  k6:
+    name: k6 Performance Tests
+    runs-on: ubuntu-latest
+    continue-on-error: true   # 👈 IMPORTANT
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      # -------------------------
+      # Run tests (JSON output)
+      # -------------------------
+      - name: Run Load Test
+        run: k6 run performance-tests/k6/load-test.js \
+              --out json=performance-tests/k6/results/load.json
+
+      - name: Run Performance Test
+        run: k6 run performance-tests/k6/performance-test.js \
+              --out json=performance-tests/k6/results/performance.json
+
+      - name: Run Security Test
+        run: k6 run performance-tests/k6/security-test.js \
+              --out json=performance-tests/k6/results/security.json
+
+      # -------------------------
+      # Generate HTML reports
+      # -------------------------
+      - name: Generate k6 HTML reports
+        run: |
+          mkdir -p performance-tests/k6/reports
+          npx k6-reporter performance-tests/k6/results/load.json \
+            -o performance-tests/k6/reports/load.html
+          npx k6-reporter performance-tests/k6/results/performance.json \
+            -o performance-tests/k6/reports/performance.html
+          npx k6-reporter performance-tests/k6/results/security.json \
+            -o performance-tests/k6/reports/security.html
+
+      - name: Upload k6 Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-reports
+          path: performance-tests/k6/reports/
