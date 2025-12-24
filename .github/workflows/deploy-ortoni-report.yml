@@ -1,103 +1,104 @@
-name: Deploy All Reports to GitHub Pages
+name: Deploy Test Reports to GitHub Pages
 
 on:
   workflow_run:
-    workflows: ["k6 Performance Tests", "Playwright Tests"]
+    workflows:
+      - "k6 Performance Tests"
+      - "Playwright Tests"
     branches: [main]
     types:
       - completed
 
 jobs:
-  deploy-reports:
-    name: Deploy All Reports
+  deploy:
+    name: Deploy Reports
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      # -------------------------------
+      # Prepare gh-pages branch
+      # -------------------------------
+      - name: Prepare gh-pages branch
+        run: |
+          git fetch origin gh-pages || true
+          git checkout gh-pages || git checkout -b gh-pages
+          git rm -rf .
+          git checkout main -- index.html
+          mkdir -p playwright-report
+          mkdir -p performance-tests/k6/reports
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Download Ortoni Report
+      # -------------------------------
+      # Download Playwright report
+      # -------------------------------
+      - name: Download Playwright Report
         uses: actions/download-artifact@v4
         with:
           name: ortoni-report
-          path: reports/
+          path: playwright-report
 
+      # -------------------------------
+      # Download k6 reports
+      # -------------------------------
       - name: Download k6 Load Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-load-test-report
-          path: performance-tests/k6/reports/
+          path: performance-tests/k6/reports
 
       - name: Download k6 Stress Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-stress-test-report
-          path: performance-tests/k6/reports/
-
-      - name: Download k6 Security Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-security-test-report
-          path: performance-tests/k6/reports/
+          path: performance-tests/k6/reports
 
       - name: Download k6 Performance Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-performance-test-report
-          path: performance-tests/k6/reports/
+          path: performance-tests/k6/reports
 
-      - name: Download Playwright Pet Test Report
+      - name: Download k6 Security Test Report
         uses: actions/download-artifact@v4
         with:
-          name: playwright-pet-test-report
-          path: playwright-report/
+          name: k6-security-test-report
+          path: performance-tests/k6/reports
 
-      - name: Download Playwright Store Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-store-test-report
-          path: playwright-report/
-
-      - name: Download Playwright User Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-user-test-report
-          path: playwright-report/
-
-      - name: Configure Git
+      # -------------------------------
+      # Extract test statistics
+      # -------------------------------
+      - name: Extract test statistics
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          mkdir -p stats
+          node scripts/extract-playwright-stats.js
+          node scripts/extract-k6-stats.js
 
-      - name: Deploy to GitHub Pages
+      # -------------------------------
+      # Inject stats into dashboard
+      # -------------------------------
+      - name: Inject stats into dashboard
+        run: node scripts/inject-stats.js
+
+      # -------------------------------
+      # Save historical snapshot
+      # -------------------------------
+      - name: Save historical snapshot
+        run: node scripts/save-history.js
+
+      # -------------------------------
+      # Commit & deploy
+      # -------------------------------
+      - name: Commit and push to gh-pages
         run: |
-          # Clone the gh-pages branch
-          git clone --branch gh-pages https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test.git gh-pages
-          
-          # Copy index.html to the gh-pages branch
-          cp index.html gh-pages/
-          
-          # Copy Ortoni report to the gh-pages branch
-          cp reports/ortoni-report.html gh-pages/ortoni-report.html
-          
-          # Copy k6 reports to the gh-pages branch
-          cp -r performance-tests/k6/reports/ gh-pages/performance-tests/k6/reports/
-          
-          # Copy playwright reports to the gh-pages branch
-          cp -r playwright-report/ gh-pages/playwright-report/
-          
-          # Commit and push the changes
-          cd gh-pages
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git add .
-          git commit -m "Update all test reports - $(date)"
+          git commit -m "Update test reports $(date)" || echo "No changes"
           git push origin gh-pages
 
       - name: Output GitHub Pages URL
-        run: echo "Reports deployed to https://steviebdesignstraining.github.io/BBC-Senior-Tester-Take-home-Test/"
+        run: |
+          echo "✅ Reports deployed:"
+          echo "https://steviebdesignstraining.github.io/BBC-Senior-Tester-Take-home-Test/"
