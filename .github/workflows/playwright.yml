@@ -8,6 +8,18 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://petstore.swagger.io/v2
+      TIMEOUT: 30000
+      AUTH_KEY: "special-key"
+      API_VERSION: v2
+      TEST_DATA_SCHEMA: schemas/testData.schema.json
+      MAX_RETRIES: 3
+      RETRY_DELAY: 1000
+      DEBUG_MODE: false
+      PET_ENDPOINT: /pet
+      STORE_ENDPOINT: /store
+      USER_ENDPOINT: /user
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4

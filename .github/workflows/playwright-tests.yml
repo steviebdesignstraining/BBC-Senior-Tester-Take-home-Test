@@ -10,6 +10,18 @@ jobs:
   pet-tests:
     name: Pet Tests
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://petstore.swagger.io/v2
+      TIMEOUT: 30000
+      AUTH_KEY: "special-key"
+      API_VERSION: v2
+      TEST_DATA_SCHEMA: schemas/testData.schema.json
+      MAX_RETRIES: 3
+      RETRY_DELAY: 1000
+      DEBUG_MODE: false
+      PET_ENDPOINT: /pet
+      STORE_ENDPOINT: /store
+      USER_ENDPOINT: /user
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,6 +47,18 @@ jobs:
   store-tests:
     name: Store Tests
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://petstore.swagger.io/v2
+      TIMEOUT: 30000
+      AUTH_KEY: "special-key"
+      API_VERSION: v2
+      TEST_DATA_SCHEMA: schemas/testData.schema.json
+      MAX_RETRIES: 3
+      RETRY_DELAY: 1000
+      DEBUG_MODE: false
+      PET_ENDPOINT: /pet
+      STORE_ENDPOINT: /store
+      USER_ENDPOINT: /user
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +84,18 @@ jobs:
   user-tests:
     name: User Tests
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://petstore.swagger.io/v2
+      TIMEOUT: 30000
+      AUTH_KEY: "special-key"
+      API_VERSION: v2
+      TEST_DATA_SCHEMA: schemas/testData.schema.json
+      MAX_RETRIES: 3
+      RETRY_DELAY: 1000
+      DEBUG_MODE: false
+      PET_ENDPOINT: /pet
+      STORE_ENDPOINT: /store
+      USER_ENDPOINT: /user
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,6 +122,18 @@ jobs:
     name: Generate Ortoni Report
     needs: [pet-tests, store-tests, user-tests]
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://petstore.swagger.io/v2
+      TIMEOUT: 30000
+      AUTH_KEY: "special-key"
+      API_VERSION: v2
+      TEST_DATA_SCHEMA: schemas/testData.schema.json
+      MAX_RETRIES: 3
+      RETRY_DELAY: 1000
+      DEBUG_MODE: false
+      PET_ENDPOINT: /pet
+      STORE_ENDPOINT: /store
+      USER_ENDPOINT: /user
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
