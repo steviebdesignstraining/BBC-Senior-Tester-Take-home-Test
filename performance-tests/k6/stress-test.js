@@ -1,5 +1,5 @@
 // k6 Stress Test - Determines breaking point and failure modes
-import { group, sleep } from 'k6';
+import { group, sleep, check } from 'k6';
 import config, { makeRequest, validateResponse, generateTestData } from './config.js';
 
 // Stress test configuration - aggressive ramp-up to find breaking point

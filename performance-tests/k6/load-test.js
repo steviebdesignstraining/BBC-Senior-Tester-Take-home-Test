@@ -1,5 +1,5 @@
 // k6 Load Test - Measures system behavior under normal and high load conditions
-import { group, sleep } from 'k6';
+import { group, sleep, check } from 'k6';
 import config, { makeRequest, validateResponse, generateTestData } from './config.js';
 
 // Load test configuration

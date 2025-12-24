@@ -21,13 +21,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Playwright (ALL tests)
+      # ✅ Run ALL tests in ONE execution
+      - name: Run Playwright tests (single run)
         run: npx playwright test
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           AUTH_KEY: ${{ secrets.AUTH_KEY }}
+          TIMEOUT: 30000
 
-      # ✅ Always generate Ortoni report
+      # ✅ Always upload Ortoni report (even if tests fail)
       - name: Upload Ortoni Report
         if: always()
         uses: actions/upload-artifact@v4

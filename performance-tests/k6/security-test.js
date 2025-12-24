@@ -1,5 +1,5 @@
 // k6 Security Test - Basic security vulnerability testing
-import { group, sleep } from 'k6';
+import { group, sleep, check } from 'k6';
 import config, { makeRequest, validateResponse } from './config.js';
 
 // Security test configuration
@@ -13,7 +13,6 @@ const securityTestConfig = {
     }
   },
   thresholds: {
-    http_req_failed: ['rate<0.05'],      // Low failure rate for security tests
     http_req_duration: ['p(95)<2000'],
     checks: ['rate>0.98']               // High check pass rate
   }

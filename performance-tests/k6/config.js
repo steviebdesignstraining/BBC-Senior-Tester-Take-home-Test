@@ -1,5 +1,4 @@
 // k6 Performance Test Configuration
-import { check, sleep } from 'k6';
 import http from 'k6/http';
 
 // Load environment variables
