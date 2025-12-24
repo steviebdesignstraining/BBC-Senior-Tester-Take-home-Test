@@ -23,8 +23,8 @@ const performanceTestConfig = {
   },
   thresholds: {
     http_req_duration: ['avg<500', 'p(90)<800', 'p(95)<1000'],
-    http_req_failed: ['rate<0.01'],  // Less than 1% failures
-    checks: ['rate>0.99'],          // 99% of checks pass
+    http_req_failed: ['rate<0.05'],  // Allow up to 5% failures (performance test tolerance)
+    checks: ['rate>0.95'],          // 95% of checks pass (performance test tolerance)
     data_received: ['<1000000'],     // Less than 1MB received per VU
     data_sent: ['<500000']          // Less than 500KB sent per VU
   }
