@@ -11,24 +11,26 @@ jobs:
     name: Load Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node dependencies
+        run: npm ci
+
+      # REQUIRED: install k6 binary
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
 
       - name: Run k6 Load Test
         run: npm run perf:load
 
-      - name: Generate k6 Load Test Report
+      - name: Generate Load Test Report
         run: npm run perf:report:load
 
-      - name: Upload k6 Load Test Report
+      - name: Upload Load Test Report
         uses: actions/upload-artifact@v4
         with:
           name: k6-load-test-report
@@ -38,121 +40,126 @@ jobs:
     name: Stress Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
 
       - name: Run k6 Stress Test
         run: npm run perf:stress
 
-      - name: Generate k6 Stress Test Report
+      - name: Generate Stress Test Report
         run: npm run perf:report:stress
 
-      - name: Upload k6 Stress Test Report
+      - name: Upload Stress Test Report
         uses: actions/upload-artifact@v4
         with:
           name: k6-stress-test-report
           path: performance-tests/k6/reports/stress-test-report.html
 
-  security-test:
-    name: Security Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run k6 Security Test
-        run: npm run perf:security
-
-      - name: Generate k6 Security Test Report
-        run: npm run perf:report:security
-
-      - name: Upload k6 Security Test Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: k6-security-test-report
-          path: performance-tests/k6/reports/security-test-report.html
-
   performance-test:
     name: Performance Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
 
       - name: Run k6 Performance Test
         run: npm run perf:performance
 
-      - name: Generate k6 Performance Test Report
+      - name: Generate Performance Test Report
         run: npm run perf:report:performance
 
-      - name: Upload k6 Performance Test Report
+      - name: Upload Performance Test Report
         uses: actions/upload-artifact@v4
         with:
           name: k6-performance-test-report
           path: performance-tests/k6/reports/performance-test-report.html
 
-  generate-ortoni-report:
-    name: Generate Ortoni Report
-    needs: [load-test, stress-test, security-test, performance-test]
+  security-test:
+    name: Security Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node dependencies
+        run: npm ci
 
-      - name: Download k6 Load Test Report
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 Security Test
+        run: npm run perf:security
+
+      - name: Generate Security Test Report
+        run: npm run perf:report:security
+
+      - name: Upload Security Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-security-test-report
+          path: performance-tests/k6/reports/security-test-report.html
+
+  generate-ortoni-report:
+    name: Generate Ortoni Report
+    needs:
+      - load-test
+      - stress-test
+      - performance-test
+      - security-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Download Load Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-load-test-report
           path: performance-tests/k6/reports/
 
-      - name: Download k6 Stress Test Report
+      - name: Download Stress Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-stress-test-report
           path: performance-tests/k6/reports/
 
-      - name: Download k6 Security Test Report
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-security-test-report
-          path: performance-tests/k6/reports/
-
-      - name: Download k6 Performance Test Report
+      - name: Download Performance Test Report
         uses: actions/download-artifact@v4
         with:
           name: k6-performance-test-report
+          path: performance-tests/k6/reports/
+
+      - name: Download Security Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-security-test-report
           path: performance-tests/k6/reports/
 
       - name: Generate Ortoni Report
