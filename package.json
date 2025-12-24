@@ -1,0 +1,45 @@
+{
+  "name": "bbc-senior-tester-take-home-test",
+  "version": "1.0.0",
+  "description": "BBC Senior Tester Take-home Test",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:reporter": "playwright test --reporter=line",
+    "test:report": "playwright show-report playwright-report",
+    "lint": "echo 'No linting configured'",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run typecheck",
+    "perf:load": "k6 run performance-tests/k6/load-test.js",
+    "perf:stress": "k6 run performance-tests/k6/stress-test.js",
+    "perf:security": "k6 run performance-tests/k6/security-test.js",
+    "perf:performance": "k6 run performance-tests/k6/performance-test.js",
+    "perf:all": "npm run perf:load && npm run perf:stress && npm run perf:security && npm run perf:performance",
+    "perf:report": "k6 run performance-tests/k6/load-test.js --out html=reports/load-test-report.html",
+    "perf:report:load": "k6 run performance-tests/k6/load-test.js --out html=performance-tests/k6/reports/load-test-report.html",
+    "perf:report:stress": "k6 run performance-tests/k6/stress-test.js --out html=performance-tests/k6/reports/stress-test-report.html",
+    "perf:report:security": "k6 run performance-tests/k6/security-test.js --out html=performance-tests/k6/reports/security-test-report.html",
+    "perf:report:performance": "k6 run performance-tests/k6/performance-test.js --out html=performance-tests/k6/reports/performance-test-report.html",
+    "perf:report:all": "npm run perf:report:load && npm run perf:report:stress && npm run perf:report:security && npm run perf:report:performance",
+    "perf:generate-reports": "node performance-tests/k6/generate-reports.js",
+    "test:ortoni": "node generate-ortoni-report.js",
+    "test:ortoni:launch": "node generate-ortoni-report.js",
+    "test:full:ortoni": "npm run test && npm run test:ortoni:launch",
+    "test:all:reports": "npm run test && npm run perf:report:all && npm run test:ortoni:launch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "ortoni-report": "^4.0.2"
+  }
+}

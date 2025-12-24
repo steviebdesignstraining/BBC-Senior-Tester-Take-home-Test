@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Test Data Schema",
+  "description": "Schema for test data variables used in Petstore API tests",
+  "type": "object",
+  "properties": {
+    "testUsername": {
+      "type": "string",
+      "pattern": "^steviebdesigns1\\+\\d+@gmail\\.com$",
+      "description": "UK-specific test username with email format"
+    },
+    "testPassword": {
+      "type": "string",
+      "pattern": "^Test@[a-zA-Z0-9]+\\d+$",
+      "minLength": 8,
+      "description": "Complex password with uppercase, lowercase, special character and numbers"
+    },
+    "testFirstName": {
+      "type": "string",
+      "enum": ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Thomas", "Daniel", "Matthew"],
+      "description": "Common UK first names"
+    },
+    "testLastName": {
+      "type": "string",
+      "enum": ["Smith", "Jones", "Taylor", "Brown", "Williams", "Wilson", "Johnson", "Davies", "Robinson", "Wright"],
+      "description": "Common UK last names"
+    },
+    "testEmail": {
+      "type": "string",
+      "pattern": "^steviebdesigns1\\+\\d+@gmail\\.com$",
+      "description": "UK-specific test email address"
+    },
+    "testPhone": {
+      "type": "string",
+      "pattern": "^\\+44 7\\d{4} \\d{5}$",
+      "description": "UK phone number format with country code"
+    },
+    "testPetName": {
+      "type": "string",
+      "enum": ["Buddy", "Max", "Charlie", "Jack", "Cooper", "Rocky", "Toby", "Bear", "Duke", "Teddy"],
+      "description": "Common pet names"
+    }
+  },
+  "required": ["testUsername", "testPassword", "testFirstName", "testLastName", "testEmail", "testPhone", "testPetName"]
+}

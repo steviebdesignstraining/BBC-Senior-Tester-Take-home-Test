@@ -1,0 +1,103 @@
+name: Deploy All Reports to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: ["k6 Performance Tests", "Playwright Tests"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  deploy-reports:
+    name: Deploy All Reports
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download Ortoni Report
+        uses: actions/download-artifact@v4
+        with:
+          name: ortoni-report
+          path: reports/
+
+      - name: Download k6 Load Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-load-test-report
+          path: performance-tests/k6/reports/
+
+      - name: Download k6 Stress Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-stress-test-report
+          path: performance-tests/k6/reports/
+
+      - name: Download k6 Security Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-security-test-report
+          path: performance-tests/k6/reports/
+
+      - name: Download k6 Performance Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-performance-test-report
+          path: performance-tests/k6/reports/
+
+      - name: Download Playwright Pet Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-pet-test-report
+          path: playwright-report/
+
+      - name: Download Playwright Store Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-store-test-report
+          path: playwright-report/
+
+      - name: Download Playwright User Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-user-test-report
+          path: playwright-report/
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Deploy to GitHub Pages
+        run: |
+          # Clone the gh-pages branch
+          git clone --branch gh-pages https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test.git gh-pages
+          
+          # Copy index.html to the gh-pages branch
+          cp index.html gh-pages/
+          
+          # Copy Ortoni report to the gh-pages branch
+          cp reports/ortoni-report.html gh-pages/ortoni-report.html
+          
+          # Copy k6 reports to the gh-pages branch
+          cp -r performance-tests/k6/reports/ gh-pages/performance-tests/k6/reports/
+          
+          # Copy playwright reports to the gh-pages branch
+          cp -r playwright-report/ gh-pages/playwright-report/
+          
+          # Commit and push the changes
+          cd gh-pages
+          git add .
+          git commit -m "Update all test reports - $(date)"
+          git push origin gh-pages
+
+      - name: Output GitHub Pages URL
+        run: echo "Reports deployed to https://steviebdesignstraining.github.io/BBC-Senior-Tester-Take-home-Test/"
