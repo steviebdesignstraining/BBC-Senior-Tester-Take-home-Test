@@ -37,24 +37,31 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          cd playwright
+          npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: |
+          cd playwright
+          npx playwright install --with-deps
 
       - name: Run Playwright tests (dynamic data)
         run: |
+          cd playwright
           echo "▶ Running Playwright tests"
           npx playwright test || true
 
       - name: Prepare Ortoni report
         run: |
+          cd playwright
           mkdir -p $REPORT_ROOT/playwright
           cp -r reports/* $REPORT_ROOT/playwright/
           cp ortoni-report.html $REPORT_ROOT/
 
       - name: Update index.html
         run: |
+          cd playwright
           node scripts/update-index.js
 
       - name: Upload Playwright reports artifact
