@@ -1,4 +1,4 @@
-name: QA Pipeline
+name: QA CI Pipeline
 
 on:
   push:
@@ -6,33 +6,57 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  test:
+  playwright:
     runs-on: ubuntu-latest
+    # environment: production  # Removed - use secrets directly
 
     env:
-      API_TOKEN: ${{ secrets.API_TOKEN }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      DEBUG_MODE: ${{ secrets.DEBUG_MODE }}
+      MAX_RETRIES: ${{ secrets.MAX_RETRIES }}
+      RETRY_DELAY: ${{ secrets.RETRY_DELAY }}
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
-      API_BASE_URL: ${{ secrets.API_BASE_URL }}
-      BASE_URL: ${{ secrets.BASE_URL || 'https://petstore.swagger.io/v2' }}
-      AUTH_KEY: ${{ secrets.AUTH_KEY || 'special-key' }}
-      TIMEOUT: ${{ secrets.TIMEOUT || '30000' }}
+      TEST_DATA_SCHEMA: ${{ secrets.TEST_DATA_SCHEMA }}
+      TIMEOUT: ${{ secrets.TIMEOUT }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Browsers
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Playwright tests
+      - name: Run Playwright tests
+        id: playwright
         run: npx playwright test
+        continue-on-error: true
+
+      - name: Prepare public site folder
+        if: always()
+        run: |
+          mkdir -p public
+          cp -r reports/* public/
+
+      - name: Upload Ortoni artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ortoni-report
+          path: public
 
       - name: k6 tests
         run: |
@@ -42,20 +66,37 @@ jobs:
           k6 run k6/security.test.js --summary-export k6/results/security-summary.json
 
       - name: Generate reports
+        if: always()
         run: |
           node scripts/generate-k6-reports.js
           node scripts/update-index.js
+          cp -r site/* public/
 
-      - name: Upload reports
+      - name: Fail build if tests failed
+        if: steps.playwright.outcome == 'failure'
+        run: |
+          echo "❌ Playwright tests failed"
+          exit 1
+
+  deploy-pages:
+    needs: playwright
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ortoni-report
+          path: public
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: public
 
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

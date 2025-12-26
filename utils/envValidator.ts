@@ -175,8 +175,8 @@ export interface EnvironmentConfig {
  */
 export function getEnvironmentConfig(): EnvironmentConfig {
   return {
-    baseUrl: getEnvVariable(BASE_URL, 'string'),
-    timeout: getEnvVariable(TIMEOUT, 'number'),
+    baseUrl: getEnvVariable(BASE_URL, 'string', 'https://petstore.swagger.io/v2'),
+    timeout: getEnvVariable(TIMEOUT, 'number', 30000),
     petId: PET_ID ? getEnvVariable(PET_ID, 'number') : undefined,
     orderId: ORDER_ID ? getEnvVariable(ORDER_ID, 'number') : undefined,
     username: USERNAME ? getEnvVariable(USERNAME, 'string') : undefined,
