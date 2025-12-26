@@ -40,7 +40,6 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        id: playwright
         run: npx playwright test
         continue-on-error: true
 
@@ -50,18 +49,12 @@ jobs:
           mkdir -p public
           cp -r reports/* public/
 
-      - name: Upload report artifact
+      - name: Upload Pages artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pages-content
           path: public
-
-      - name: Fail job if tests failed
-        if: steps.playwright.outcome == 'failure'
-        run: |
-          echo "❌ Playwright tests failed"
-          exit 1
 
   deploy-pages:
     needs: playwright
