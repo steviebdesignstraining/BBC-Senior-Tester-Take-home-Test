@@ -128,7 +128,7 @@ function generateReport(testType, summaryData) {
 }
 
 function main() {
-    const resultsDir = path.join(__dirname, '..', 'performance-tests', 'k6', 'results');
+    const resultsDir = path.join(__dirname, '..', 'k6', 'results');
     const reportsDir = path.join(__dirname, '..', 'site', 'reports', 'k6');
     
     // Create directories if they don't exist

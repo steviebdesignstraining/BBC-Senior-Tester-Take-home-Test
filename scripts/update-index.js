@@ -285,7 +285,7 @@ function main() {
     let metadata = {
         lastRun: new Date().toISOString(),
         commit: process.env.GITHUB_SHA || 'unknown',
-        ortoni: 'reports/ortoni-report.html',
+        ortoni: '../ortoni-report.html',
         k6: {
             load: 'reports/k6/load.html',
             performance: 'reports/k6/performance.html',

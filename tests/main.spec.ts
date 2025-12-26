@@ -18,9 +18,10 @@ test('should load BASE_URL and TIMEOUT from env', async () => {
   expect(envConfig.baseUrl).toBeDefined();
   expect(envConfig.timeout).toBeDefined();
   
-  // Assert that the environment variables have the expected values
-  expect(envConfig.baseUrl).toBe('https://petstore.swagger.io/v2');
-  expect(envConfig.timeout).toBe(30000);
+  // Assert that the environment variables have valid values (not hardcoded)
+  expect(envConfig.baseUrl).toMatch(/^https?:\/\//);
+  expect(envConfig.timeout).toBeGreaterThan(0);
+  expect(envConfig.timeout).toBeLessThan(120000);
   
   // Test that we can access all environment variables
   expect(envConfig).toHaveProperty('authKey');

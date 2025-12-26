@@ -36,10 +36,10 @@ export default defineConfig({
         description: 'BBC Senior Tester Take-home Test',
         release: '1.0',
         platform: process.platform,
-        'k6 Load Test Report': './performance-tests/k6/reports/load-test-report.html',
-        'k6 Stress Test Report': './performance-tests/k6/reports/stress-test-report.html',
-        'k6 Security Test Report': './performance-tests/k6/reports/security-test-report.html',
-        'k6 Performance Test Report': './performance-tests/k6/reports/performance-test-report.html',
+        'k6 Load Test Report': './reports/k6/load.html',
+        'k6 Stress Test Report': './reports/k6/stress.html',
+        'k6 Security Test Report': './reports/k6/security.html',
+        'k6 Performance Test Report': './reports/k6/performance.html',
       },
     }],
   ],
@@ -48,7 +48,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: process.env.BASE_URL,
+    baseURL: process.env.BASE_URL || 'https://petstore.swagger.io/v2',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -91,6 +91,9 @@ export default defineConfig({
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     // },
   ],
+
+  /* Global setup for dynamic test data */
+  globalSetup: './global-setup.ts',
 
   /* Run your local dev server before starting the tests */
   // webServer: {

@@ -36,10 +36,10 @@ jobs:
 
       - name: k6 tests
         run: |
-          k6 run k6/load.test.js --summary-export performance-tests/k6/results/load-summary.json
-          k6 run k6/performance.test.js --summary-export performance-tests/k6/results/performance-summary.json
-          k6 run k6/stress.test.js --summary-export performance-tests/k6/results/stress-summary.json
-          k6 run k6/security.test.js --summary-export performance-tests/k6/results/security-summary.json
+          k6 run k6/load.test.js --summary-export k6/results/load-summary.json
+          k6 run k6/performance.test.js --summary-export k6/results/performance-summary.json
+          k6 run k6/stress.test.js --summary-export k6/results/stress-summary.json
+          k6 run k6/security.test.js --summary-export k6/results/security-summary.json
 
       - name: Generate reports
         run: |

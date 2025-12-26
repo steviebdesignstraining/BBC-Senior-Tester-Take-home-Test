@@ -67,7 +67,7 @@ async function globalSetup() {
       console.log("Fallback test data created and saved to runtime-data.json");
     }
   } catch (error) {
-    console.error("Failed to fetch dynamic test data:", error.message);
+    console.error("Failed to fetch dynamic test data:", error instanceof Error ? error.message : String(error));
     console.log("Using fallback test data...");
     
     // Create fallback test data
