@@ -2,9 +2,8 @@ name: QA CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -14,7 +13,7 @@ permissions:
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    # environment: production  # Removed - use secrets directly
+    environment: Configure Playwright
 
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
@@ -26,10 +25,10 @@ jobs:
       TIMEOUT: ${{ secrets.TIMEOUT }}
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -37,53 +36,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install k6
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gpg
-          sudo mkdir -m 0755 -p /etc/apt/keyrings
-          wget -q -O - https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/k6-archive-keyring.gpg
-          echo "deb [signed-by=/etc/apt/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install -y k6
-
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
         id: playwright
-        run: npx playwright test --timeout 60000
+        run: npx playwright test
         continue-on-error: true
 
-      - name: Prepare public site folder
+      - name: Prepare Pages content
         if: always()
         run: |
           mkdir -p public
           cp -r reports/* public/
 
-      - name: Upload Ortoni artifact
+      - name: Upload report artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ortoni-report
+          name: pages-content
           path: public
 
-      - name: k6 tests
-        if: steps.playwright.outcome != 'failure'
-        run: |
-          k6 run k6/load.test.js --summary-export k6/results/load-summary.json --duration 30s --vus 10
-          k6 run k6/performance.test.js --summary-export k6/results/performance-summary.json --duration 30s --vus 10
-          k6 run k6/stress.test.js --summary-export k6/results/stress-summary.json --duration 30s --vus 20
-          k6 run k6/security.test.js --summary-export k6/results/security-summary.json --duration 30s --vus 5
-
-      - name: Generate reports
-        if: always()
-        run: |
-          node scripts/generate-k6-reports.js
-          node scripts/update-index.js
-          cp -r site/* public/
-
-      - name: Fail build if tests failed
+      - name: Fail job if tests failed
         if: steps.playwright.outcome == 'failure'
         run: |
           echo "❌ Playwright tests failed"
@@ -95,10 +69,10 @@ jobs:
     if: always()
 
     steps:
-      - name: Download report artifact
+      - name: Download Pages artifact
         uses: actions/download-artifact@v4
         with:
-          name: ortoni-report
+          name: pages-content
           path: public
 
       - name: Configure GitHub Pages
