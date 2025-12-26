@@ -51,13 +51,11 @@ jobs:
         run: |
           mkdir -p $REPORT_ROOT/playwright
           cp -r reports/* $REPORT_ROOT/playwright/
+          cp ortoni-report.html $REPORT_ROOT/
 
       - name: Update index.html
         run: |
-          node scripts/update-index.js \
-            playwright \
-            "Playwright UI & API Tests" \
-            "playwright/ortoni-report.html"
+          node scripts/update-index.js
 
       - name: Upload Playwright reports artifact
         uses: actions/upload-artifact@v4
@@ -106,10 +104,7 @@ jobs:
 
       - name: Update index.html
         run: |
-          node scripts/update-index.js \
-            k6-${{ matrix.test }} \
-            "k6 ${{ matrix.test }} test" \
-            "k6/${{ matrix.test }}/index.html"
+          node scripts/update-index.js
 
       - name: Upload k6 reports artifact
         uses: actions/upload-artifact@v4

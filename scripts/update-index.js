@@ -283,14 +283,14 @@ function main() {
 
     // Read metadata or create default
     let metadata = {
-        lastRun: new Date().toISOString(),
-        commit: process.env.GITHUB_SHA || 'unknown',
-        ortoni: '../ortoni-report.html',
+        lastRun: process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString(),
+        commit: process.env.GITHUB_SHA || process.env.GITHUB_REF || 'unknown',
+        ortoni: 'ortoni-report.html',
         k6: {
-            load: 'reports/k6/load.html',
-            performance: 'reports/k6/performance.html',
-            stress: 'reports/k6/stress.html',
-            security: 'reports/k6/security.html'
+            load: 'k6/load/index.html',
+            performance: 'k6/performance/index.html',
+            stress: 'k6/stress/index.html',
+            security: 'k6/security/index.html'
         }
     };
 
