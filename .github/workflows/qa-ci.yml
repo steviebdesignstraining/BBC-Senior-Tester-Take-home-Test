@@ -59,10 +59,10 @@ jobs:
             "Playwright UI & API Tests" \
             "playwright/ortoni-report.html"
 
-      - name: Upload QA reports artifact
+      - name: Upload Playwright reports artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qa-reports
+          name: playwright-reports
           path: site
 
   k6:
@@ -111,10 +111,10 @@ jobs:
             "k6 ${{ matrix.test }} test" \
             "k6/${{ matrix.test }}/index.html"
 
-      - name: Upload QA reports artifact
+      - name: Upload k6 reports artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qa-reports
+          name: k6-reports-${{ matrix.test }}
           path: site
 
   deploy:
@@ -127,10 +127,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Download QA reports artifact
+      - name: Download Playwright reports artifact
         uses: actions/download-artifact@v4
         with:
-          name: qa-reports
+          name: playwright-reports
+          path: site
+
+      - name: Download k6 reports artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-reports-load
           path: site
 
       - name: Configure GitHub Pages
