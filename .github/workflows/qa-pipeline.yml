@@ -37,6 +37,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y k6
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
