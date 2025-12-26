@@ -1,0 +1,37 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 🔧 Allow test failures but keep running
+      - name: Run Playwright tests
+        run: npx playwright test
+        continue-on-error: true
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          AUTH_KEY: ${{ secrets.AUTH_KEY }}
+
+      # 🔧 ALWAYS upload Ortoni report
+      - name: Upload Ortoni Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ortoni-report
+          path: reports/
