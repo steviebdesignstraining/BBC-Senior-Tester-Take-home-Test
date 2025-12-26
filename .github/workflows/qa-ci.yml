@@ -86,7 +86,7 @@ jobs:
         run: |
           mkdir -p k6-results
           k6 run \
-            performance-tests/k6/${{ matrix.test }}.js \
+            k6/${{ matrix.test }}.test.js \
             --out json=k6-results/${{ matrix.test }}.json || true
 
       - name: Generate k6 HTML report
