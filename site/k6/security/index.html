@@ -1,74 +1,10 @@
-#!/usr/bin/env node
 
-/**
- * Converts k6 JSON output into a comprehensive HTML report with charts, tables, and thresholds
- * Usage:
- *   node k6-json-to-html.js input.json output.html
- */
-
-const fs = require("fs");
-const path = require("path");
-
-const [,, inputFile, outputFile] = process.argv;
-
-if (!inputFile || !outputFile) {
-  console.error("Usage: node k6-json-to-html.js <input.json> <output.html>");
-  process.exit(1);
-}
-
-if (!fs.existsSync(inputFile)) {
-  console.error(`Input file not found: ${inputFile}`);
-  process.exit(1);
-}
-
-const data = JSON.parse(fs.readFileSync(inputFile, "utf8"));
-
-const metrics = data.metrics || {};
-const checks = metrics.checks?.values || {};
-const httpReqDuration = metrics.http_req_duration?.values || {};
-const httpReqFailed = metrics.http_req_failed?.values || {};
-const httpReqRate = metrics.http_req_rate?.values || {};
-const vus = metrics.vus?.values || {};
-const iterations = metrics.iterations?.values || {};
-
-// Calculate performance thresholds
-const thresholds = {
-  http_req_duration: {
-    p95: httpReqDuration.p95 || 0,
-    p99: httpReqDuration.p99 || 0,
-    avg: httpReqDuration.avg || 0,
-    max: httpReqDuration.max || 0,
-    min: httpReqDuration.min || 0
-  },
-  http_req_failed: {
-    rate: (httpReqFailed.rate || 0) * 100, // Convert to percentage
-    passes: httpReqFailed.passes || 0,
-    fails: httpReqFailed.fails || 0
-  },
-  http_req_rate: {
-    rate: httpReqRate.rate || 0
-  },
-  vus: {
-    current: vus.current || 0,
-    max: vus.max || 0
-  },
-  iterations: {
-    count: iterations.count || 0,
-    rate: iterations.rate || 0
-  }
-};
-
-// Determine test type from filename
-const testType = path.basename(outputFile, '.html').split('/').pop();
-const testTitle = testType.charAt(0).toUpperCase() + testType.slice(1) + ' Test';
-
-const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>k6 ${testTitle} Report</title>
+  <title>k6 Index Test Report</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -298,8 +234,8 @@ const html = `
 <body>
   <div class="container">
     <div class="header">
-      <h1>${testTitle}</h1>
-      <p>Performance Test Report - Generated ${new Date().toLocaleString()}</p>
+      <h1>Index Test</h1>
+      <p>Performance Test Report - Generated 12/26/2025, 10:53:10 PM</p>
     </div>
     
     <div class="metrics-grid">
@@ -309,7 +245,7 @@ const html = `
             <div class="metric-title">Average Response Time</div>
             <div class="metric-subtitle">Mean time for HTTP requests</div>
           </div>
-          <div class="metric-value">${thresholds.http_req_duration.avg.toFixed(2)}ms</div>
+          <div class="metric-value">0.00ms</div>
         </div>
       </div>
       
@@ -319,7 +255,7 @@ const html = `
             <div class="metric-title">95th Percentile</div>
             <div class="metric-subtitle">95% of requests completed within</div>
           </div>
-          <div class="metric-value">${thresholds.http_req_duration.p95.toFixed(2)}ms</div>
+          <div class="metric-value">0.00ms</div>
         </div>
       </div>
       
@@ -329,7 +265,7 @@ const html = `
             <div class="metric-title">Error Rate</div>
             <div class="metric-subtitle">Percentage of failed requests</div>
           </div>
-          <div class="metric-value" style="color: ${thresholds.http_req_failed.rate > 5 ? 'var(--danger-color)' : 'var(--success-color)'}">${thresholds.http_req_failed.rate.toFixed(2)}%</div>
+          <div class="metric-value" style="color: var(--success-color)">0.00%</div>
         </div>
       </div>
       
@@ -339,7 +275,7 @@ const html = `
             <div class="metric-title">Request Rate</div>
             <div class="metric-subtitle">Requests per second</div>
           </div>
-          <div class="metric-value">${thresholds.http_req_rate.rate.toFixed(2)} req/s</div>
+          <div class="metric-value">0.00 req/s</div>
         </div>
       </div>
     </div>
@@ -365,23 +301,23 @@ const html = `
         <h3 class="chart-title">Response Time Analysis</h3>
         <div class="threshold-item">
           <span class="threshold-label">Minimum</span>
-          <span class="threshold-value">${thresholds.http_req_duration.min.toFixed(2)}ms</span>
+          <span class="threshold-value">0.00ms</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Average</span>
-          <span class="threshold-value">${thresholds.http_req_duration.avg.toFixed(2)}ms</span>
+          <span class="threshold-value">0.00ms</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">95th Percentile</span>
-          <span class="threshold-value">${thresholds.http_req_duration.p95.toFixed(2)}ms</span>
+          <span class="threshold-value">0.00ms</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">99th Percentile</span>
-          <span class="threshold-value">${thresholds.http_req_duration.p99.toFixed(2)}ms</span>
+          <span class="threshold-value">0.00ms</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Maximum</span>
-          <span class="threshold-value">${thresholds.http_req_duration.max.toFixed(2)}ms</span>
+          <span class="threshold-value">0.00ms</span>
         </div>
       </div>
       
@@ -389,19 +325,19 @@ const html = `
         <h3 class="chart-title">Error Analysis</h3>
         <div class="threshold-item">
           <span class="threshold-label">Error Rate</span>
-          <span class="threshold-value" style="color: ${thresholds.http_req_failed.rate > 5 ? 'var(--danger-color)' : 'var(--success-color)'}">${thresholds.http_req_failed.rate.toFixed(2)}%</span>
+          <span class="threshold-value" style="color: var(--success-color)">0.00%</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Total Requests</span>
-          <span class="threshold-value">${(thresholds.http_req_failed.passes + thresholds.http_req_failed.fails)}</span>
+          <span class="threshold-value">0</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Successful</span>
-          <span class="threshold-value" style="color: var(--success-color)">${thresholds.http_req_failed.passes}</span>
+          <span class="threshold-value" style="color: var(--success-color)">0</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Failed</span>
-          <span class="threshold-value" style="color: var(--danger-color)">${thresholds.http_req_failed.fails}</span>
+          <span class="threshold-value" style="color: var(--danger-color)">0</span>
         </div>
       </div>
       
@@ -409,19 +345,19 @@ const html = `
         <h3 class="chart-title">Load Metrics</h3>
         <div class="threshold-item">
           <span class="threshold-label">Virtual Users</span>
-          <span class="threshold-value">${thresholds.vus.current} / ${thresholds.vus.max}</span>
+          <span class="threshold-value">0 / 0</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Iterations</span>
-          <span class="threshold-value">${thresholds.iterations.count}</span>
+          <span class="threshold-value">0</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Iteration Rate</span>
-          <span class="threshold-value">${thresholds.iterations.rate.toFixed(2)} it/s</span>
+          <span class="threshold-value">0.00 it/s</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Request Rate</span>
-          <span class="threshold-value">${thresholds.http_req_rate.rate.toFixed(2)} req/s</span>
+          <span class="threshold-value">0.00 req/s</span>
         </div>
       </div>
     </div>
@@ -440,37 +376,37 @@ const html = `
         <tbody>
           <tr>
             <td>HTTP Request Duration (avg)</td>
-            <td>${thresholds.http_req_duration.avg.toFixed(2)}</td>
+            <td>0.00</td>
             <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.avg < 1000 ? 'status-pass' : 'status-warning'}">${thresholds.http_req_duration.avg < 1000 ? 'PASS' : 'WARNING'}</span></td>
+            <td><span class="status-badge status-pass">PASS</span></td>
           </tr>
           <tr>
             <td>HTTP Request Duration (p95)</td>
-            <td>${thresholds.http_req_duration.p95.toFixed(2)}</td>
+            <td>0.00</td>
             <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.p95 < 2000 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_duration.p95 < 2000 ? 'PASS' : 'FAIL'}</span></td>
+            <td><span class="status-badge status-pass">PASS</span></td>
           </tr>
           <tr>
             <td>HTTP Request Duration (p99)</td>
-            <td>${thresholds.http_req_duration.p99.toFixed(2)}</td>
+            <td>0.00</td>
             <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.p99 < 3000 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_duration.p99 < 3000 ? 'PASS' : 'FAIL'}</span></td>
+            <td><span class="status-badge status-pass">PASS</span></td>
           </tr>
           <tr>
             <td>HTTP Request Failed Rate</td>
-            <td>${thresholds.http_req_failed.rate.toFixed(2)}</td>
+            <td>0.00</td>
             <td>%</td>
-            <td><span class="status-badge ${thresholds.http_req_failed.rate < 5 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_failed.rate < 5 ? 'PASS' : 'FAIL'}</span></td>
+            <td><span class="status-badge status-pass">PASS</span></td>
           </tr>
           <tr>
             <td>HTTP Request Rate</td>
-            <td>${thresholds.http_req_rate.rate.toFixed(2)}</td>
+            <td>0.00</td>
             <td>req/s</td>
             <td><span class="status-badge status-pass">INFO</span></td>
           </tr>
           <tr>
             <td>Virtual Users (current)</td>
-            <td>${thresholds.vus.current}</td>
+            <td>0</td>
             <td>users</td>
             <td><span class="status-badge status-pass">INFO</span></td>
           </tr>
@@ -494,11 +430,11 @@ const html = `
         datasets: [{
           label: 'Response Time (ms)',
           data: [
-            ${thresholds.http_req_duration.min},
-            ${thresholds.http_req_duration.avg},
-            ${thresholds.http_req_duration.p95},
-            ${thresholds.http_req_duration.p99},
-            ${thresholds.http_req_duration.max}
+            0,
+            0,
+            0,
+            0,
+            0
           ],
           backgroundColor: [
             'rgba(59, 130, 246, 0.8)',
@@ -545,9 +481,9 @@ const html = `
         labels: ['Response Time (P95)', 'Error Rate', 'Request Rate'],
         datasets: [{
           data: [
-            ${Math.min(thresholds.http_req_duration.p95 / 2000 * 100, 100)},
-            ${Math.max(100 - thresholds.http_req_failed.rate * 10, 0)},
-            ${Math.min(thresholds.http_req_rate.rate / 100 * 100, 100)}
+            0,
+            100,
+            0
           ],
           backgroundColor: [
             'rgba(34, 197, 94, 0.8)',
@@ -575,9 +511,3 @@ const html = `
   </script>
 </body>
 </html>
-`;
-
-fs.mkdirSync(path.dirname(outputFile), { recursive: true });
-fs.writeFileSync(outputFile, html);
-
-console.log(`✅ k6 HTML report generated: ${outputFile}`);

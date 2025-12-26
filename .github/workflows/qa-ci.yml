@@ -63,7 +63,7 @@ jobs:
 
       - name: Update index.html
         run: |
-          node scripts/update-index.js
+          node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Upload Playwright reports artifact
         uses: actions/upload-artifact@v4
@@ -116,7 +116,7 @@ jobs:
 
       - name: Update index.html
         run: |
-          node scripts/update-index.js
+          node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Upload k6 reports artifact
         uses: actions/upload-artifact@v4
@@ -180,7 +180,7 @@ jobs:
 
       - name: Update index.html with GitHub Actions metadata
         run: |
-          node scripts/update-index.js
+          node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Deploy to GitHub Pages
         id: deployment
