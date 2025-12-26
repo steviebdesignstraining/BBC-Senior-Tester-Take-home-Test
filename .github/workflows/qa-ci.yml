@@ -30,6 +30,10 @@ jobs:
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
       TEST_DATA_SCHEMA: ${{ secrets.TEST_DATA_SCHEMA }}
       TIMEOUT: ${{ secrets.TIMEOUT }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_REF: ${{ github.ref }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_RUN_NUMBER: ${{ github.run_number }}
 
     steps:
       - name: Checkout repository
@@ -49,13 +53,13 @@ jobs:
       - name: Run Playwright tests (dynamic data)
         run: |
           echo "▶ Running Playwright tests"
-          npx playwright test || true
+          npx playwright test --reporter=ortoni-report || true
 
       - name: Prepare Ortoni report
         run: |
-          mkdir -p $REPORT_ROOT/playwright
-          cp -r reports/* $REPORT_ROOT/playwright/
-          cp ortoni-report.html $REPORT_ROOT/
+          mkdir -p $REPORT_ROOT/reports
+          cp -r reports/* $REPORT_ROOT/reports/
+          cp ortoni-report.html $REPORT_ROOT/reports/
 
       - name: Update index.html
         run: |
@@ -84,6 +88,10 @@ jobs:
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_REF: ${{ github.ref }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_RUN_NUMBER: ${{ github.run_number }}
 
     steps:
       - name: Checkout repository
@@ -125,6 +133,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
+    env:
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_REF: ${{ github.ref }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_RUN_NUMBER: ${{ github.run_number }}
+
     steps:
       - name: Download Playwright reports artifact
         uses: actions/download-artifact@v4
@@ -138,6 +152,24 @@ jobs:
           name: k6-reports-load
           path: site
 
+      - name: Download k6 performance reports
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-reports-performance
+          path: site
+
+      - name: Download k6 stress reports
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-reports-stress
+          path: site
+
+      - name: Download k6 security reports
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-reports-security
+          path: site
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
@@ -145,6 +177,10 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
+      - name: Update index.html with GitHub Actions metadata
+        run: |
+          node scripts/update-index.js
 
       - name: Deploy to GitHub Pages
         id: deployment

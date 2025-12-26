@@ -81,6 +81,25 @@ const dashboardTemplate = `
             background-color: var(--success-color);
         }
         
+        .pipeline-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .pipeline-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -186,7 +205,14 @@ const dashboardTemplate = `
         <div class="status-bar">
             <div class="status-item">
                 <div class="status-dot"></div>
-                <span>Tests Running</span>
+                <div>
+                    <span style="font-weight: 700; font-size: 1.1rem;">Tests Running</span>
+                    <div class="pipeline-info">
+                        <span><strong>Workflow:</strong> {{WORKFLOW_NAME}}</span>
+                        <span><strong>Branch:</strong> {{BRANCH}}</span>
+                        <span><strong>Event:</strong> {{EVENT}}</span>
+                    </div>
+                </div>
             </div>
             <div class="status-item">
                 <span>Last Run: <strong>{{LAST_RUN}}</strong></span>
@@ -284,6 +310,19 @@ function main() {
         fs.mkdirSync(reportsDir);
     }
 
+    // Debug: Check if we're in GitHub Actions environment
+    console.log('GitHub Actions Environment:', {
+        GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+        GITHUB_SHA: process.env.GITHUB_SHA,
+        GITHUB_REF: process.env.GITHUB_REF,
+        GITHUB_RUN_ID: process.env.GITHUB_RUN_ID,
+        GITHUB_RUN_NUMBER: process.env.GITHUB_RUN_NUMBER
+    });
+
+    // Extract branch name from GITHUB_REF
+    const branch = process.env.GITHUB_REF ? process.env.GITHUB_REF.replace('refs/heads/', '') :
+                   process.env.GITHUB_REF_NAME || 'unknown';
+
     // Read metadata or create default
     let metadata = {
         lastRun: process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString(),
@@ -291,6 +330,9 @@ function main() {
         commitShort: process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown',
         runId: process.env.GITHUB_RUN_ID || 'unknown',
         runNumber: process.env.GITHUB_RUN_NUMBER || 'unknown',
+        branch: branch,
+        workflowName: process.env.GITHUB_WORKFLOW || 'QA CI Pipeline',
+        event: process.env.GITHUB_EVENT_NAME || 'push',
         ortoni: 'reports/ortoni-report.html',
         k6: {
             load: 'k6/load/index.html',
@@ -302,10 +344,15 @@ function main() {
 
     // Only load existing metadata if we're in a GitHub Actions environment
     // This prevents local runs from overwriting the correct paths
+    // However, prioritize GitHub Actions environment variables over existing metadata
     if (process.env.GITHUB_ACTIONS && fs.existsSync(metadataFile)) {
         try {
             const existingMetadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
-            metadata = { ...metadata, ...existingMetadata };
+            // Merge existing metadata but prioritize GitHub Actions environment variables
+            metadata = {
+                ...existingMetadata,
+                ...metadata // GitHub Actions values take precedence
+            };
         } catch (error) {
             console.warn('Failed to read existing metadata, using defaults:', error.message);
         }
@@ -316,6 +363,9 @@ function main() {
         .replace('{{LAST_RUN}}', new Date(metadata.lastRun).toLocaleString())
         .replace('{{COMMIT_SHORT}}', metadata.commitShort)
         .replace('{{RUN_NUMBER}}', metadata.runNumber)
+        .replace('{{WORKFLOW_NAME}}', metadata.workflowName)
+        .replace('{{BRANCH}}', metadata.branch)
+        .replace('{{EVENT}}', metadata.event)
         .replace('{{ORTONI_LINK}}', metadata.ortoni)
         .replace('{{K6_LOAD}}', metadata.k6.load)
         .replace('{{K6_PERFORMANCE}}', metadata.k6.performance)
