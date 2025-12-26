@@ -1,0 +1,332 @@
+const fs = require('fs');
+const path = require('path');
+
+// Template for the main dashboard
+const dashboardTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBC Senior Tester Take-home Test - QA Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --card-bg: #fff;
+            --border-color: #dee2e6;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), #0056b3);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .status-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--success-color);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        
+        .report-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .report-links li {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+            transition: all 0.2s;
+        }
+        
+        .report-links li:hover {
+            background: #e9ecef;
+            border-left-color: var(--success-color);
+        }
+        
+        .report-links a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .report-links a:hover {
+            color: var(--primary-color);
+        }
+        
+        .report-type {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .timestamp {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>QA Pipeline Dashboard</h1>
+        <p>Comprehensive testing results from Playwright and k6</p>
+    </div>
+    
+    <div class="container">
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot"></div>
+                <span>Tests Running</span>
+            </div>
+            <div class="status-item">
+                <span>Last Run: <strong>{{LAST_RUN}}</strong></span>
+            </div>
+            <div class="status-item">
+                <span>Commit: <strong>{{COMMIT_SHA}}</strong></span>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>Functional Tests (Playwright)</h2>
+                <ul class="report-links">
+                    <li>
+                        <a href="{{ORTONI_LINK}}" target="_blank">
+                            <span>
+                                <span class="report-type">Ortoni Report</span><br>
+                                <span>Comprehensive functional test results</span>
+                            </span>
+                            <span>→</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>Performance Tests (k6)</h2>
+                <ul class="report-links">
+                    <li>
+                        <a href="{{K6_LOAD}}" target="_blank">
+                            <span>
+                                <span class="report-type">Load Test</span><br>
+                                <span>System behavior under normal and high load</span>
+                            </span>
+                            <span>→</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{K6_PERFORMANCE}}" target="_blank">
+                            <span>
+                                <span class="report-type">Performance Test</span><br>
+                                <span>System performance under various conditions</span>
+                            </span>
+                            <span>→</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{K6_STRESS}}" target="_blank">
+                            <span>
+                                <span class="report-type">Stress Test</span><br>
+                                <span>System behavior under extreme load</span>
+                            </span>
+                            <span>→</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{K6_SECURITY}}" target="_blank">
+                            <span>
+                                <span class="report-type">Security Test</span><br>
+                                <span>System security under attack scenarios</span>
+                            </span>
+                            <span>→</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            Dashboard generated on {{TIMESTAMP}} | Environment: {{ENVIRONMENT}}
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 BBC Senior Tester Take-home Test | All tests run automatically on every push to main</p>
+            <p>For questions or issues, please check the <a href="https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test" target="_blank">repository</a></p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
+function main() {
+    const siteDir = path.join(__dirname, '..', 'site');
+    const reportsDir = path.join(siteDir, 'reports');
+    const metadataFile = path.join(reportsDir, 'metadata.json');
+    
+    // Create directories if they don't exist
+    if (!fs.existsSync(siteDir)) {
+        fs.mkdirSync(siteDir);
+    }
+    if (!fs.existsSync(reportsDir)) {
+        fs.mkdirSync(reportsDir);
+    }
+
+    // Read metadata or create default
+    let metadata = {
+        lastRun: new Date().toISOString(),
+        commit: process.env.GITHUB_SHA || 'unknown',
+        ortoni: 'reports/ortoni-report.html',
+        k6: {
+            load: 'reports/k6/load.html',
+            performance: 'reports/k6/performance.html',
+            stress: 'reports/k6/stress.html',
+            security: 'reports/k6/security.html'
+        }
+    };
+
+    if (fs.existsSync(metadataFile)) {
+        try {
+            const existingMetadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+            metadata = { ...metadata, ...existingMetadata };
+        } catch (error) {
+            console.warn('Failed to read existing metadata, using defaults:', error.message);
+        }
+    }
+
+    // Generate dashboard
+    let dashboard = dashboardTemplate
+        .replace('{{LAST_RUN}}', new Date(metadata.lastRun).toLocaleString())
+        .replace('{{COMMIT_SHA}}', metadata.commit)
+        .replace('{{ORTONI_LINK}}', metadata.ortoni)
+        .replace('{{K6_LOAD}}', metadata.k6.load)
+        .replace('{{K6_PERFORMANCE}}', metadata.k6.performance)
+        .replace('{{K6_STRESS}}', metadata.k6.stress)
+        .replace('{{K6_SECURITY}}', metadata.k6.security)
+        .replace('{{TIMESTAMP}}', new Date().toISOString())
+        .replace('{{ENVIRONMENT}}', process.env.BASE_URL || 'Unknown');
+
+    const dashboardFile = path.join(siteDir, 'index.html');
+    fs.writeFileSync(dashboardFile, dashboard);
+    
+    // Save metadata
+    fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+    
+    console.log(`✓ Generated dashboard: ${dashboardFile}`);
+    console.log(`✓ Updated metadata: ${metadataFile}`);
+}
+
+if (require.main === module) {
+    main();
+}
+
+module.exports = { main };

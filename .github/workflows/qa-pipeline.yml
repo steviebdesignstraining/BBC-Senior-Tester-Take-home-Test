@@ -1,0 +1,61 @@
+name: QA Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+      TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      BASE_URL: ${{ secrets.BASE_URL || 'https://petstore.swagger.io/v2' }}
+      AUTH_KEY: ${{ secrets.AUTH_KEY || 'special-key' }}
+      TIMEOUT: ${{ secrets.TIMEOUT || '30000' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Playwright tests
+        run: npx playwright test
+
+      - name: k6 tests
+        run: |
+          k6 run k6/load.test.js --summary-export performance-tests/k6/results/load-summary.json
+          k6 run k6/performance.test.js --summary-export performance-tests/k6/results/performance-summary.json
+          k6 run k6/stress.test.js --summary-export performance-tests/k6/results/stress-summary.json
+          k6 run k6/security.test.js --summary-export performance-tests/k6/results/security-summary.json
+
+      - name: Generate reports
+        run: |
+          node scripts/generate-k6-reports.js
+          node scripts/update-index.js
+
+      - name: Upload reports
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v4
