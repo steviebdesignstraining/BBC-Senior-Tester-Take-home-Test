@@ -69,6 +69,7 @@ jobs:
           path: public
 
       - name: k6 tests
+        if: steps.playwright.outcome != 'failure'
         run: |
           k6 run k6/load.test.js --summary-export k6/results/load-summary.json
           k6 run k6/performance.test.js --summary-export k6/results/performance-summary.json
