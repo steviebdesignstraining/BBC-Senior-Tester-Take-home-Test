@@ -13,7 +13,7 @@ permissions:
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    environment: Configure Playwright
+    environment: Playwright standard Env
 
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
