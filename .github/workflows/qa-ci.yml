@@ -94,7 +94,7 @@ jobs:
           mkdir -p public/k6/${{ matrix.test }}
           node scripts/k6-json-to-html.js \
             k6-results/${{ matrix.test }}.json \
-            public/k6/${{ matrix.test }}/index.html
+            public/k6/${{ matrix.test }}/index.html || true
 
       - name: Update index.html
         run: |
