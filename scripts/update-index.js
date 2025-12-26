@@ -192,7 +192,10 @@ const dashboardTemplate = `
                 <span>Last Run: <strong>{{LAST_RUN}}</strong></span>
             </div>
             <div class="status-item">
-                <span>Commit: <strong>{{COMMIT_SHA}}</strong></span>
+                <span>Commit: <strong>{{COMMIT_SHORT}}</strong></span>
+            </div>
+            <div class="status-item">
+                <span>Run: <strong>#{{RUN_NUMBER}}</strong></span>
             </div>
         </div>
         
@@ -284,8 +287,11 @@ function main() {
     // Read metadata or create default
     let metadata = {
         lastRun: process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString(),
-        commit: process.env.GITHUB_SHA || process.env.GITHUB_REF || 'unknown',
-        ortoni: 'ortoni-report.html',
+        commit: process.env.GITHUB_SHA || process.env.GITHUB_REF_NAME || 'unknown',
+        commitShort: process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown',
+        runId: process.env.GITHUB_RUN_ID || 'unknown',
+        runNumber: process.env.GITHUB_RUN_NUMBER || 'unknown',
+        ortoni: 'reports/ortoni-report.html',
         k6: {
             load: 'k6/load/index.html',
             performance: 'k6/performance/index.html',
@@ -294,7 +300,9 @@ function main() {
         }
     };
 
-    if (fs.existsSync(metadataFile)) {
+    // Only load existing metadata if we're in a GitHub Actions environment
+    // This prevents local runs from overwriting the correct paths
+    if (process.env.GITHUB_ACTIONS && fs.existsSync(metadataFile)) {
         try {
             const existingMetadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
             metadata = { ...metadata, ...existingMetadata };
@@ -306,7 +314,8 @@ function main() {
     // Generate dashboard
     let dashboard = dashboardTemplate
         .replace('{{LAST_RUN}}', new Date(metadata.lastRun).toLocaleString())
-        .replace('{{COMMIT_SHA}}', metadata.commit)
+        .replace('{{COMMIT_SHORT}}', metadata.commitShort)
+        .replace('{{RUN_NUMBER}}', metadata.runNumber)
         .replace('{{ORTONI_LINK}}', metadata.ortoni)
         .replace('{{K6_LOAD}}', metadata.k6.load)
         .replace('{{K6_PERFORMANCE}}', metadata.k6.performance)

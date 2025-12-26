@@ -1,11 +1,14 @@
 {
-  "lastRun": "2025-12-26T13:21:21.681Z",
+  "lastRun": "2025-12-26T22:09:38.504Z",
   "commit": "unknown",
-  "ortoni": "../ortoni-report.html",
+  "commitShort": "unknown",
+  "runId": "unknown",
+  "runNumber": "unknown",
+  "ortoni": "reports/ortoni-report.html",
   "k6": {
-    "load": "reports/k6/load.html",
-    "performance": "reports/k6/performance.html",
-    "stress": "reports/k6/stress.html",
-    "security": "reports/k6/security.html"
+    "load": "k6/load/index.html",
+    "performance": "k6/performance/index.html",
+    "stress": "k6/stress/index.html",
+    "security": "k6/security/index.html"
   }
 }
