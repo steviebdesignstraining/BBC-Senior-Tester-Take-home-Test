@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 env:
-  REPORT_ROOT: public
+  REPORT_ROOT: site
   RUN_DATE: ${{ github.run_id }}
   RUN_TIME: ${{ github.run_number }}
 
@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qa-reports
-          path: public
+          path: site
 
   k6:
     name: k6 Performance Tests
@@ -99,10 +99,10 @@ jobs:
 
       - name: Generate k6 HTML report
         run: |
-          mkdir -p public/k6/${{ matrix.test }}
+          mkdir -p site/k6/${{ matrix.test }}
           node ${{ github.workspace }}/scripts/k6-json-to-html.js \
             k6-results/${{ matrix.test }}.json \
-            public/k6/${{ matrix.test }}/index.html || true
+            site/k6/${{ matrix.test }}/index.html || true
 
       - name: Update index.html
         run: |
@@ -115,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qa-reports
-          path: public
+          path: site
 
   deploy:
     name: Deploy QA Reports to GitHub Pages
@@ -131,7 +131,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: qa-reports
-          path: public
+          path: site
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -139,7 +139,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
