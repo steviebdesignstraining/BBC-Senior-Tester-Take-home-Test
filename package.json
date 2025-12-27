@@ -1,43 +1,49 @@
 {
-  "name": "bbc-senior-tester-take-home-test",
+  "name": "BBC-Senior-Tester-Take-home-Test",
   "version": "1.0.0",
-  "description": "BBC Senior Tester Take-home Test",
+  "description": "Technical assessment for BBC Senior/Principle Test Engineer position",
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed",
-    "test:debug": "playwright test --debug",
-    "test:reporter": "playwright test --reporter=line",
-    "test:report": "playwright show-report playwright-report",
-    "lint": "echo 'No linting configured'",
-    "typecheck": "tsc --noEmit",
-    "pretest": "npm run typecheck",
-    "perf:load": "k6 run k6/load.test.js --summary-export k6/results/load-summary.json",
-    "perf:stress": "k6 run k6/stress.test.js --summary-export k6/results/stress-summary.json",
-    "perf:security": "k6 run k6/security.test.js --summary-export k6/results/security-summary.json",
-    "perf:performance": "k6 run k6/performance.test.js --summary-export k6/results/performance-summary.json",
-    "perf:all": "npm run perf:load && npm run perf:stress && npm run perf:security && npm run perf:performance",
-    "perf:generate-reports": "node scripts/generate-k6-reports.js",
-    "test:ortoni": "node generate-ortoni-report.js",
-    "test:ortoni:launch": "node generate-ortoni-report.js",
-    "test:full:ortoni": "npm run test && npm run test:ortoni:launch",
-    "ci:run": "npm run test && npm run perf:all && npm run perf:generate-reports && npm run update-dashboard",
+    "test:api": "playwright test tests/api.spec.ts",
+    "test:integration": "playwright test tests/integration.spec.ts",
+    "test:report": "playwright test --reporter=html",
+    "test:load": "k6 run k6/load.test.js",
+    "test:stress": "k6 run k6/stress.test.js",
+    "test:performance": "k6 run k6/performance.test.js",
+    "test:security": "k6 run k6/security.test.js",
+    "generate-report": "node scripts/generate-report.js",
     "update-dashboard": "node scripts/update-index.js",
-    "dashboard": "node scripts/update-index.js && open site/index.html"
+    "fetch-github-data": "node scripts/fetch-github-data.js",
+    "extract-k6-stats": "node scripts/extract-k6-stats.js",
+    "ensure-k6-data": "node scripts/ensure-k6-data.js",
+    "setup": "npm install && npx playwright install",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "testing",
+    "playwright",
+    "k6",
+    "api-testing",
+    "performance-testing",
+    "automation"
+  ],
+  "author": "Stephen Bennett",
+  "license": "MIT",
   "devDependencies": {
-    "@faker-js/faker": "^10.1.0",
-    "@playwright/test": "^1.57.0",
-    "@types/node": "^25.0.3"
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
   },
   "dependencies": {
-    "ajv": "^8.17.1",
-    "axios": "^1.7.2",
-    "dotenv": "^17.2.3",
-    "ortoni-report": "^4.0.2"
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "fs-extra": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
