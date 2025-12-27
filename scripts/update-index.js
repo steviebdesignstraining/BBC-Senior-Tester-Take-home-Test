@@ -8,352 +8,229 @@ const dashboardTemplate = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BBC Senior Tester Take-home Test - QA Dashboard</title>
+    <title>Test Reports Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #007bff;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
-            --bg-color: #f8f9fa;
-            --text-color: #333;
-            --card-bg: #fff;
-            --border-color: #dee2e6;
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
-        /* Bootstrap Icons */
-        .bi {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            vertical-align: -.125em;
-            fill: currentColor;
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+        .report-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
         }
-        
-        .header {
-            background: linear-gradient(135deg, var(--primary-color), #0056b3);
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 40px 20px;
-            text-align: center;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
         }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-        
-        .header p {
-            margin: 10px 0 0 0;
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-        
-        .status-bar {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-        }
-        
-        .status-dot {
+        .status-indicator {
+            display: inline-block;
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background-color: var(--success-color);
+            margin-right: 8px;
         }
-        
-        .status-dot.failed {
-            background-color: var(--danger-color);
+        .status-passed {
+            background-color: #28a745;
         }
-        
-        .status-dot.warning {
-            background-color: var(--warning-color);
+        .status-failed {
+            background-color: #dc3545;
         }
-        
-        .test-status {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-top: 10px;
+        .status-warning {
+            background-color: #ffc107;
         }
-        
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            border: 1px solid var(--border-color);
-        }
-        
-        .status-badge.passed {
-            background-color: #d4edda;
-            color: #155724;
-            border-color: #c3e6cb;
-        }
-        
-        .status-badge.failed {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-color: #f5c6cb;
-        }
-        
-        .status-badge.warning {
-            background-color: #fff3cd;
-            color: #856404;
-            border-color: #ffeaa7;
-        }
-        
         .pipeline-info {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
             font-size: 0.9rem;
             color: #666;
-        }
-        
-        .pipeline-badge {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-        }
-        
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        
-        .card h2 {
-            margin-top: 0;
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 10px;
-        }
-        
-        .report-links {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .report-links li {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border-left: 4px solid var(--primary-color);
-            transition: all 0.2s;
-        }
-        
-        .report-links li:hover {
-            background: #e9ecef;
-            border-left-color: var(--success-color);
-        }
-        
-        .report-links a {
-            text-decoration: none;
-            color: var(--text-color);
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .report-links a:hover {
-            color: var(--primary-color);
-        }
-        
-        .report-type {
-            font-size: 0.9rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .timestamp {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 20px;
-            text-align: center;
-        }
-        
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            color: #666;
-            font-size: 0.9rem;
-            border-top: 1px solid var(--border-color);
-            padding-top: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .status-bar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+            margin-top: 10px;
         }
     </style>
 </head>
-<body>
-    <div class="header">
-        <h1>QA Pipeline Dashboard</h1>
-        <p>Comprehensive testing results from Playwright and k6</p>
-    </div>
-    
-    <div class="container">
-        <div class="status-bar">
-            <div class="status-item">
-                <div class="status-dot {{PIPELINE_STATUS_CLASS}}"></div>
-                <div>
-                    <span style="font-weight: 700; font-size: 1.1rem;">{{PIPELINE_STATUS_TEXT}}</span>
-                    <div class="test-status">
-                        <span class="status-badge {{PLAYWRIGHT_STATUS_CLASS}}">
-                            🐛 Playwright: {{PLAYWRIGHT_STATUS}}
-                        </span>
-                        <span class="status-badge {{K6_STATUS_CLASS}}">
-                            ⚡ k6 Tests: {{K6_STATUS}}
-                        </span>
-                    </div>
-                    <div class="pipeline-info">
-                        <span><strong>Workflow:</strong> {{WORKFLOW_NAME}}</span>
-                        <span><strong>Branch:</strong> {{BRANCH}}</span>
-                        <span><strong>Event:</strong> {{EVENT}}</span>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="category-header text-center">
+            <h1 class="display-4 fw-bold"><i class="bi bi-speedometer2"></i> Test Reports Dashboard</h1>
+            <p class="lead">BBC Senior Tester Take-home Test - Automated Test Results</p>
+        </div>
+
+        <!-- Pipeline Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-2">
+                                    <span class="status-indicator {{PIPELINE_STATUS_CLASS}}"></span>
+                                    {{PIPELINE_STATUS_TEXT}}
+                                </h5>
+                                <div class="pipeline-info">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <strong>Playwright:</strong>
+                                            <span class="badge {{PLAYWRIGHT_STATUS_CLASS}}">{{PLAYWRIGHT_STATUS}}</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>k6 Tests:</strong>
+                                            <span class="badge {{K6_STATUS_CLASS}}">{{K6_STATUS}}</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Workflow:</strong> {{WORKFLOW_NAME}}
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Branch:</strong> {{BRANCH}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small">
+                                    <div>Run: #{{RUN_NUMBER}}</div>
+                                    <div>Commit: {{COMMIT_SHORT}}</div>
+                                    <div>Last Run: {{LAST_RUN}}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="status-item">
-                <span>Last Run: <strong>{{LAST_RUN}}</strong></span>
+        </div>
+
+        <!-- Playwright Test Reports -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="mb-4"><i class="bi bi-bug"></i> Playwright Test Reports</h2>
             </div>
-            <div class="status-item">
-                <span>Commit: <strong>{{COMMIT_SHORT}}</strong></span>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-house report-icon text-primary"></i>
+                        <h5 class="card-title">Pet Tests</h5>
+                        <p class="card-text">Playwright tests for Pet API endpoints</p>
+                        <a href="{{ORTONI_LINK}}" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="status-item">
-                <span>Run: <strong>#{{RUN_NUMBER}}</strong></span>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-shop report-icon text-success"></i>
+                        <h5 class="card-title">Store Tests</h5>
+                        <p class="card-text">Playwright tests for Store API endpoints</p>
+                        <a href="{{ORTONI_LINK}}" class="btn btn-success" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-person report-icon text-info"></i>
+                        <h5 class="card-title">User Tests</h5>
+                        <p class="card-text">Playwright tests for User API endpoints</p>
+                        <a href="{{ORTONI_LINK}}" class="btn btn-info" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="grid">
-            <div class="card">
-                <h2>Functional Tests (Playwright)</h2>
-                <ul class="report-links">
-                    <li>
-                        <a href="{{ORTONI_LINK}}" target="_blank">
-                            <span>
-                                <span class="report-type">Ortoni Report</span><br>
-                                <span>Comprehensive functional test results</span>
-                            </span>
-                            <span>→</span>
-                        </a>
-                    </li>
-                </ul>
+
+        <!-- Ortoni Report -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="mb-4"><i class="bi bi-clipboard-data"></i> Comprehensive Test Report</h2>
             </div>
-            
-            <div class="card">
-                <h2>Performance Tests (k6)</h2>
-                <ul class="report-links">
-                    <li>
-                        <a href="{{K6_LOAD}}" target="_blank">
-                            <span>
-                                <span class="report-type">Load Test</span><br>
-                                <span>System behavior under normal and high load</span>
-                            </span>
-                            <span>→</span>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-graph-up report-icon text-warning"></i>
+                        <h5 class="card-title">Ortoni HTML Report</h5>
+                        <p class="card-text">Combined test report with all Playwright and k6 test results</p>
+                        <a href="{{ORTONI_LINK}}" class="btn btn-warning btn-lg" target="_blank">
+                            <i class="bi bi-eye"></i> View Ortoni Report
                         </a>
-                    </li>
-                    <li>
-                        <a href="{{K6_PERFORMANCE}}" target="_blank">
-                            <span>
-                                <span class="report-type">Performance Test</span><br>
-                                <span>System performance under various conditions</span>
-                            </span>
-                            <span>→</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{K6_STRESS}}" target="_blank">
-                            <span>
-                                <span class="report-type">Stress Test</span><br>
-                                <span>System behavior under extreme load</span>
-                            </span>
-                            <span>→</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{K6_SECURITY}}" target="_blank">
-                            <span>
-                                <span class="report-type">Security Test</span><br>
-                                <span>System security under attack scenarios</span>
-                            </span>
-                            <span>→</span>
-                        </a>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="timestamp">
-            Dashboard generated on {{TIMESTAMP}} | Environment: {{ENVIRONMENT}}
+
+        <!-- k6 Performance Test Reports -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="mb-4"><i class="bi bi-lightning"></i> k6 Performance Test Reports</h2>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-arrow-up-right report-icon text-danger"></i>
+                        <h5 class="card-title">Load Test</h5>
+                        <p class="card-text">Performance test under expected load</p>
+                        <a href="{{K6_LOAD}}" class="btn btn-danger" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-battery-full report-icon text-warning"></i>
+                        <h5 class="card-title">Stress Test</h5>
+                        <p class="card-text">Performance test under extreme load</p>
+                        <a href="{{K6_STRESS}}" class="btn btn-warning" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-shield-check report-icon text-success"></i>
+                        <h5 class="card-title">Security Test</h5>
+                        <p class="card-text">Security-focused performance tests</p>
+                        <a href="{{K6_SECURITY}}" class="btn btn-success" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-speedometer report-icon text-primary"></i>
+                        <h5 class="card-title">Performance Test</h5>
+                        <p class="card-text">General performance benchmark tests</p>
+                        <a href="{{K6_PERFORMANCE}}" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-eye"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div class="footer">
-            <p>© 2025 BBC Senior Tester Take-home Test | All tests run automatically on every push to main</p>
-            <p>For questions or issues, please check the <a href="https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test" target="_blank">repository</a></p>
+
+        <!-- Footer -->
+        <div class="row">
+            <div class="col-12 text-center text-muted">
+                <p><i class="bi bi-github"></i> BBC Senior Tester Take-home Test</p>
+                <p class="small">Reports generated automatically by GitHub Actions</p>
+                <p class="small">Environment: {{ENVIRONMENT}}</p>
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 `;
@@ -394,13 +271,13 @@ function main() {
     
     if (playwrightStatus === 'FAILED' || k6Status === 'FAILED') {
         pipelineStatus = 'FAILED';
-        pipelineStatusClass = 'failed';
+        pipelineStatusClass = 'status-failed';
     } else if (playwrightStatus === 'PASSED' && k6Status === 'PASSED') {
         pipelineStatus = 'PASSED';
-        pipelineStatusClass = 'passed';
+        pipelineStatusClass = 'status-passed';
     } else {
         pipelineStatus = 'RUNNING';
-        pipelineStatusClass = 'warning';
+        pipelineStatusClass = 'status-warning';
     }
 
     // Read metadata or create default
@@ -425,8 +302,8 @@ function main() {
         k6Status: k6Status,
         pipelineStatus: pipelineStatus,
         pipelineStatusClass: pipelineStatusClass,
-        playwrightStatusClass: playwrightStatus === 'FAILED' ? 'failed' : (playwrightStatus === 'PASSED' ? 'passed' : 'warning'),
-        k6StatusClass: k6Status === 'FAILED' ? 'failed' : (k6Status === 'PASSED' ? 'passed' : 'warning')
+        playwrightStatusClass: playwrightStatus === 'FAILED' ? 'bg-danger text-white' : (playwrightStatus === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark'),
+        k6StatusClass: k6Status === 'FAILED' ? 'bg-danger text-white' : (k6Status === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark')
     };
 
     // Only load existing metadata if we're in a GitHub Actions environment
