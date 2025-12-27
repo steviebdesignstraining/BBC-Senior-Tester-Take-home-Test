@@ -1,583 +1,417 @@
-#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
 
-/**
- * Converts k6 JSON output into a comprehensive HTML report with charts, tables, and thresholds
- * Usage:
- *   node k6-json-to-html.js input.json output.html
- */
-
-const fs = require("fs");
-const path = require("path");
-
-const [,, inputFile, outputFile] = process.argv;
-
-if (!inputFile || !outputFile) {
-  console.error("Usage: node k6-json-to-html.js <input.json> <output.html>");
-  process.exit(1);
+// Parse command line arguments
+const args = process.argv.slice(2);
+if (args.length < 2) {
+    console.error('Usage: node k6-json-to-html.js <input-json-file> <output-html-file>');
+    process.exit(1);
 }
 
+const inputFile = args[0];
+const outputFile = args[1];
+
+console.log(`📊 Processing k6 results...`);
+console.log(`  Input: ${inputFile}`);
+console.log(`  Output: ${outputFile}`);
+
+// Check if input file exists
 if (!fs.existsSync(inputFile)) {
-  console.error(`Input file not found: ${inputFile}`);
-  process.exit(1);
+    console.error(`❌ Error: Input file not found: ${inputFile}`);
+    process.exit(1);
 }
 
-const data = JSON.parse(fs.readFileSync(inputFile, "utf8"));
+try {
+    // Get file stats to check size
+    const stats = fs.statSync(inputFile);
+    console.log(`  File size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    // If file is too large (>50MB), use streaming approach
+    if (stats.size > 50 * 1024 * 1024) {
+        console.log('⚠️  Large file detected, using streaming parser...');
+        processLargeFile(inputFile, outputFile);
+    } else {
+        processNormalFile(inputFile, outputFile);
+    }
+    
+    console.log('✅ HTML report generated successfully!');
+} catch (error) {
+    console.error('❌ Error generating report:', error.message);
+    
+    // Create a fallback HTML report with error info
+    const fallbackHtml = generateFallbackReport(inputFile, error);
+    fs.writeFileSync(outputFile, fallbackHtml);
+    
+    console.log('⚠️  Created fallback report with error information');
+    process.exit(0); // Don't fail the build
+}
 
-const metrics = data.metrics || {};
-const checks = metrics.checks?.values || {};
-const httpReqDuration = metrics.http_req_duration?.values || {};
-const httpReqFailed = metrics.http_req_failed?.values || {};
-const httpReqRate = metrics.http_req_rate?.values || {};
-const vus = metrics.vus?.values || {};
-const iterations = metrics.iterations?.values || {};
+function processNormalFile(inputFile, outputFile) {
+    // Read file line by line (NDJSON format)
+    const fileContent = fs.readFileSync(inputFile, 'utf8');
+    const lines = fileContent.trim().split('\n');
+    
+    console.log(`  Processing ${lines.length} lines...`);
+    
+    const metrics = {
+        http_reqs: [],
+        http_req_duration: [],
+        http_req_failed: [],
+        vus: [],
+        iterations: []
+    };
+    
+    let summary = null;
+    
+    // Parse each line as separate JSON
+    lines.forEach((line, index) => {
+        if (!line.trim()) return;
+        
+        try {
+            const data = JSON.parse(line);
+            
+            // Capture summary data
+            if (data.type === 'Metric' && data.data && data.data.type === 'summary') {
+                if (!summary) summary = {};
+                summary[data.metric] = data.data;
+            }
+            
+            // Capture point data for charts
+            if (data.type === 'Point' && data.data) {
+                const metricName = data.metric;
+                if (metrics[metricName]) {
+                    metrics[metricName].push(data.data);
+                }
+            }
+        } catch (err) {
+            // Skip invalid JSON lines
+            if (index < 5 || index > lines.length - 5) {
+                console.log(`  ⚠️  Skipping invalid JSON at line ${index + 1}`);
+            }
+        }
+    });
+    
+    console.log(`  Parsed metrics:`, Object.keys(summary || {}).length);
+    
+    // Generate HTML report
+    const html = generateHtmlReport(summary, metrics, path.basename(inputFile));
+    
+    // Ensure output directory exists
+    const outputDir = path.dirname(outputFile);
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(outputFile, html);
+}
 
-// Calculate performance thresholds
-const thresholds = {
-  http_req_duration: {
-    p95: httpReqDuration.p95 || 0,
-    p99: httpReqDuration.p99 || 0,
-    avg: httpReqDuration.avg || 0,
-    max: httpReqDuration.max || 0,
-    min: httpReqDuration.min || 0
-  },
-  http_req_failed: {
-    rate: (httpReqFailed.rate || 0) * 100, // Convert to percentage
-    passes: httpReqFailed.passes || 0,
-    fails: httpReqFailed.fails || 0
-  },
-  http_req_rate: {
-    rate: httpReqRate.rate || 0
-  },
-  vus: {
-    current: vus.current || 0,
-    max: vus.max || 0
-  },
-  iterations: {
-    count: iterations.count || 0,
-    rate: iterations.rate || 0
-  }
-};
+function processLargeFile(inputFile, outputFile) {
+    const readline = require('readline');
+    const fileStream = fs.createReadStream(inputFile);
+    
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+    
+    const metrics = {};
+    let summary = null;
+    let lineCount = 0;
+    
+    return new Promise((resolve, reject) => {
+        rl.on('line', (line) => {
+            if (!line.trim()) return;
+            lineCount++;
+            
+            try {
+                const data = JSON.parse(line);
+                
+                if (data.type === 'Metric' && data.data && data.data.type === 'summary') {
+                    if (!summary) summary = {};
+                    summary[data.metric] = data.data;
+                }
+            } catch (err) {
+                // Skip invalid lines
+            }
+        });
+        
+        rl.on('close', () => {
+            console.log(`  Processed ${lineCount} lines (streaming mode)`);
+            const html = generateHtmlReport(summary, {}, path.basename(inputFile));
+            fs.writeFileSync(outputFile, html);
+            resolve();
+        });
+        
+        rl.on('error', reject);
+    });
+}
 
-// Determine test type from filename
-const testType = path.basename(outputFile, '.html').split('/').pop();
-const testTitle = testType.charAt(0).toUpperCase() + testType.slice(1) + ' Test';
-
-const html = `
+function generateHtmlReport(summary, metrics, filename) {
+    const testName = filename.replace('.json', '').replace(/-/g, ' ').toUpperCase();
+    
+    // Calculate summary statistics
+    let totalRequests = 0;
+    let failedRequests = 0;
+    let avgDuration = 0;
+    let p95Duration = 0;
+    let p99Duration = 0;
+    
+    if (summary) {
+        if (summary.http_reqs) {
+            totalRequests = summary.http_reqs.values?.count || 0;
+        }
+        if (summary.http_req_failed) {
+            const failedRate = summary.http_req_failed.values?.rate || 0;
+            failedRequests = Math.round(totalRequests * failedRate);
+        }
+        if (summary.http_req_duration) {
+            avgDuration = summary.http_req_duration.values?.avg || 0;
+            p95Duration = summary.http_req_duration.values?.['p(95)'] || 0;
+            p99Duration = summary.http_req_duration.values?.['p(99)'] || 0;
+        }
+    }
+    
+    const successRate = totalRequests > 0 
+        ? ((totalRequests - failedRequests) / totalRequests * 100).toFixed(2)
+        : 0;
+    
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>k6 ${testTitle} Report</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --primary-color: #3b82f6;
-      --success-color: #10b981;
-      --danger-color: #ef4444;
-      --warning-color: #f59e0b;
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-color: #1e293b;
-      --border-color: #e2e8f0;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      margin: 0;
-      padding: 2rem;
-      line-height: 1.6;
-    }
-    
-    .header {
-      background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
-      color: white;
-      padding: 2rem;
-      border-radius: 12px;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    .header h1 {
-      margin: 0;
-      font-size: 2.5rem;
-      font-weight: 700;
-    }
-    
-    .header p {
-      margin: 0.5rem 0 0 0;
-      opacity: 0.9;
-      font-size: 1.1rem;
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .metric-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s;
-    }
-    
-    .metric-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .metric-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      border-bottom: 2px solid var(--border-color);
-      padding-bottom: 0.5rem;
-    }
-    
-    .metric-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--text-color);
-    }
-    
-    .metric-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary-color);
-    }
-    
-    .metric-subtitle {
-      font-size: 0.875rem;
-      color: #64748b;
-      margin-top: 0.25rem;
-    }
-    
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 2rem;
-      margin-bottom: 2rem;
-    }
-    
-    .chart-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .chart-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: var(--text-color);
-    }
-    
-    .chart-container {
-      position: relative;
-      height: 300px;
-      width: 100%;
-    }
-    
-    .thresholds-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .threshold-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .threshold-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .threshold-item:last-child {
-      border-bottom: none;
-    }
-    
-    .threshold-label {
-      font-weight: 600;
-      color: var(--text-color);
-    }
-    
-    .threshold-value {
-      font-weight: 700;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .status-badge {
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    
-    .status-pass {
-      background-color: #dcfce7;
-      color: #166534;
-    }
-    
-    .status-fail {
-      background-color: #fee2e2;
-      color: #991b1b;
-    }
-    
-    .status-warning {
-      background-color: #fff3cd;
-      color: #856404;
-    }
-    
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      background: var(--card-bg);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .summary-table th,
-    .summary-table td {
-      padding: 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .summary-table th {
-      background-color: #f1f5f9;
-      font-weight: 600;
-      color: var(--text-color);
-    }
-    
-    .footer {
-      text-align: center;
-      margin-top: 3rem;
-      padding: 2rem;
-      color: #64748b;
-      border-top: 1px solid var(--border-color);
-    }
-    
-    @media (max-width: 768px) {
-      .charts-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .chart-container {
-        height: 250px;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k6 Test Report - ${testName}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        .metric-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-unit {
+            font-size: 1rem;
+            color: #999;
+            margin-left: 5px;
+        }
+        
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .danger { color: #dc3545; }
+        
+        .details-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .details-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #999;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>${testTitle}</h1>
-      <p>Performance Test Report - Generated ${new Date().toLocaleString()}</p>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 k6 Performance Test Report</h1>
+            <p>${testName}</p>
+            <p style="font-size: 0.9rem; margin-top: 10px;">Generated: ${new Date().toISOString()}</p>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h3>Total Requests</h3>
+                <div class="metric-value">${totalRequests.toLocaleString()}</div>
+            </div>
+            
+            <div class="metric-card">
+                <h3>Success Rate</h3>
+                <div class="metric-value ${successRate >= 95 ? 'success' : successRate >= 80 ? 'warning' : 'danger'}">
+                    ${successRate}<span class="metric-unit">%</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <h3>Failed Requests</h3>
+                <div class="metric-value ${failedRequests === 0 ? 'success' : 'danger'}">
+                    ${failedRequests.toLocaleString()}
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <h3>Avg Response Time</h3>
+                <div class="metric-value">${avgDuration.toFixed(2)}<span class="metric-unit">ms</span></div>
+            </div>
+            
+            <div class="metric-card">
+                <h3>P95 Response Time</h3>
+                <div class="metric-value">${p95Duration.toFixed(2)}<span class="metric-unit">ms</span></div>
+            </div>
+            
+            <div class="metric-card">
+                <h3>P99 Response Time</h3>
+                <div class="metric-value">${p99Duration.toFixed(2)}<span class="metric-unit">ms</span></div>
+            </div>
+        </div>
+        
+        ${summary ? `
+        <div class="details-section">
+            <h2>📊 Detailed Metrics</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Min</th>
+                        <th>Avg</th>
+                        <th>Max</th>
+                        <th>P(90)</th>
+                        <th>P(95)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(summary).map(([metric, data]) => {
+                        if (!data.values) return '';
+                        const v = data.values;
+                        return `
+                        <tr>
+                            <td><strong>${metric}</strong></td>
+                            <td>${formatValue(v.min)}</td>
+                            <td>${formatValue(v.avg)}</td>
+                            <td>${formatValue(v.max)}</td>
+                            <td>${formatValue(v['p(90)'])}</td>
+                            <td>${formatValue(v['p(95)'])}</td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+        ` : '<div class="details-section"><p>No detailed metrics available</p></div>'}
+        
+        <div class="footer">
+            <p>Generated by k6 JSON to HTML converter</p>
+            <p>Test file: ${filename}</p>
+        </div>
     </div>
-    
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-header">
-          <div>
-            <div class="metric-title">Average Response Time</div>
-            <div class="metric-subtitle">Mean time for HTTP requests</div>
-          </div>
-          <div class="metric-value">${thresholds.http_req_duration.avg.toFixed(2)}ms</div>
-        </div>
-      </div>
-      
-      <div class="metric-card">
-        <div class="metric-header">
-          <div>
-            <div class="metric-title">95th Percentile</div>
-            <div class="metric-subtitle">95% of requests completed within</div>
-          </div>
-          <div class="metric-value">${thresholds.http_req_duration.p95.toFixed(2)}ms</div>
-        </div>
-      </div>
-      
-      <div class="metric-card">
-        <div class="metric-header">
-          <div>
-            <div class="metric-title">Error Rate</div>
-            <div class="metric-subtitle">Percentage of failed requests</div>
-          </div>
-          <div class="metric-value" style="color: ${thresholds.http_req_failed.rate > 5 ? 'var(--danger-color)' : 'var(--success-color)'}">${thresholds.http_req_failed.rate.toFixed(2)}%</div>
-        </div>
-      </div>
-      
-      <div class="metric-card">
-        <div class="metric-header">
-          <div>
-            <div class="metric-title">Request Rate</div>
-            <div class="metric-subtitle">Requests per second</div>
-          </div>
-          <div class="metric-value">${thresholds.http_req_rate.rate.toFixed(2)} req/s</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="charts-grid">
-      <div class="chart-card">
-        <h3 class="chart-title">Response Time Distribution</h3>
-        <div class="chart-container">
-          <canvas id="responseTimeChart"></canvas>
-        </div>
-      </div>
-      
-      <div class="chart-card">
-        <h3 class="chart-title">Performance Thresholds</h3>
-        <div class="chart-container">
-          <canvas id="thresholdsChart"></canvas>
-        </div>
-      </div>
-    </div>
-    
-    <div class="thresholds-grid">
-      <div class="threshold-card">
-        <h3 class="chart-title">Response Time Analysis</h3>
-        <div class="threshold-item">
-          <span class="threshold-label">Minimum</span>
-          <span class="threshold-value">${thresholds.http_req_duration.min.toFixed(2)}ms</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Average</span>
-          <span class="threshold-value">${thresholds.http_req_duration.avg.toFixed(2)}ms</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">95th Percentile</span>
-          <span class="threshold-value">${thresholds.http_req_duration.p95.toFixed(2)}ms</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">99th Percentile</span>
-          <span class="threshold-value">${thresholds.http_req_duration.p99.toFixed(2)}ms</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Maximum</span>
-          <span class="threshold-value">${thresholds.http_req_duration.max.toFixed(2)}ms</span>
-        </div>
-      </div>
-      
-      <div class="threshold-card">
-        <h3 class="chart-title">Error Analysis</h3>
-        <div class="threshold-item">
-          <span class="threshold-label">Error Rate</span>
-          <span class="threshold-value" style="color: ${thresholds.http_req_failed.rate > 5 ? 'var(--danger-color)' : 'var(--success-color)'}">${thresholds.http_req_failed.rate.toFixed(2)}%</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Total Requests</span>
-          <span class="threshold-value">${(thresholds.http_req_failed.passes + thresholds.http_req_failed.fails)}</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Successful</span>
-          <span class="threshold-value" style="color: var(--success-color)">${thresholds.http_req_failed.passes}</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Failed</span>
-          <span class="threshold-value" style="color: var(--danger-color)">${thresholds.http_req_failed.fails}</span>
-        </div>
-      </div>
-      
-      <div class="threshold-card">
-        <h3 class="chart-title">Load Metrics</h3>
-        <div class="threshold-item">
-          <span class="threshold-label">Virtual Users</span>
-          <span class="threshold-value">${thresholds.vus.current} / ${thresholds.vus.max}</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Iterations</span>
-          <span class="threshold-value">${thresholds.iterations.count}</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Iteration Rate</span>
-          <span class="threshold-value">${thresholds.iterations.rate.toFixed(2)} it/s</span>
-        </div>
-        <div class="threshold-item">
-          <span class="threshold-label">Request Rate</span>
-          <span class="threshold-value">${thresholds.http_req_rate.rate.toFixed(2)} req/s</span>
-        </div>
-      </div>
-    </div>
-    
-    <div class="chart-card">
-      <h3 class="chart-title">Detailed Metrics</h3>
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>Metric</th>
-            <th>Value</th>
-            <th>Unit</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>HTTP Request Duration (avg)</td>
-            <td>${thresholds.http_req_duration.avg.toFixed(2)}</td>
-            <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.avg < 1000 ? 'status-pass' : 'status-warning'}">${thresholds.http_req_duration.avg < 1000 ? 'PASS' : 'WARNING'}</span></td>
-          </tr>
-          <tr>
-            <td>HTTP Request Duration (p95)</td>
-            <td>${thresholds.http_req_duration.p95.toFixed(2)}</td>
-            <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.p95 < 2000 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_duration.p95 < 2000 ? 'PASS' : 'FAIL'}</span></td>
-          </tr>
-          <tr>
-            <td>HTTP Request Duration (p99)</td>
-            <td>${thresholds.http_req_duration.p99.toFixed(2)}</td>
-            <td>ms</td>
-            <td><span class="status-badge ${thresholds.http_req_duration.p99 < 3000 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_duration.p99 < 3000 ? 'PASS' : 'FAIL'}</span></td>
-          </tr>
-          <tr>
-            <td>HTTP Request Failed Rate</td>
-            <td>${thresholds.http_req_failed.rate.toFixed(2)}</td>
-            <td>%</td>
-            <td><span class="status-badge ${thresholds.http_req_failed.rate < 5 ? 'status-pass' : 'status-fail'}">${thresholds.http_req_failed.rate < 5 ? 'PASS' : 'FAIL'}</span></td>
-          </tr>
-          <tr>
-            <td>HTTP Request Rate</td>
-            <td>${thresholds.http_req_rate.rate.toFixed(2)}</td>
-            <td>req/s</td>
-            <td><span class="status-badge status-pass">INFO</span></td>
-          </tr>
-          <tr>
-            <td>Virtual Users (current)</td>
-            <td>${thresholds.vus.current}</td>
-            <td>users</td>
-            <td><span class="status-badge status-pass">INFO</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    
-    <div class="footer">
-      <p>Report generated by k6 Performance Testing Framework</p>
-      <p>For more details, check the raw JSON data or k6 documentation</p>
-    </div>
-  </div>
-  
-  <script>
-    // Response Time Distribution Chart
-    const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
-    const responseTimeChart = new Chart(responseTimeCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Min', 'Avg', 'P95', 'P99', 'Max'],
-        datasets: [{
-          label: 'Response Time (ms)',
-          data: [
-            ${thresholds.http_req_duration.min},
-            ${thresholds.http_req_duration.avg},
-            ${thresholds.http_req_duration.p95},
-            ${thresholds.http_req_duration.p99},
-            ${thresholds.http_req_duration.max}
-          ],
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(245, 158, 11, 0.8)',
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(168, 85, 247, 0.8)'
-          ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(34, 197, 94, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(239, 68, 68, 1)',
-            'rgba(168, 85, 247, 1)'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Response Time (ms)'
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
-      }
-    });
-    
-    // Thresholds Chart
-    const thresholdsCtx = document.getElementById('thresholdsChart').getContext('2d');
-    const thresholdsChart = new Chart(thresholdsCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Response Time (P95)', 'Error Rate', 'Request Rate'],
-        datasets: [{
-          data: [
-            ${Math.min(thresholds.http_req_duration.p95 / 2000 * 100, 100)},
-            ${Math.max(100 - thresholds.http_req_failed.rate * 10, 0)},
-            ${Math.min(thresholds.http_req_rate.rate / 100 * 100, 100)}
-          ],
-          backgroundColor: [
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(59, 130, 246, 0.8)'
-          ],
-          borderColor: [
-            'rgba(34, 197, 94, 1)',
-            'rgba(239, 68, 68, 1)',
-            'rgba(59, 130, 246, 1)'
-          ],
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom'
-          }
-        }
-      }
-    });
-  </script>
 </body>
 </html>
 `;
+}
 
-fs.mkdirSync(path.dirname(outputFile), { recursive: true });
-fs.writeFileSync(outputFile, html);
+function generateFallbackReport(inputFile, error) {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k6 Test Report - Error</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 40px;
+            background: #f5f7fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #dc3545; }
+        .error { background: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ Report Generation Error</h1>
+        <p>Unable to generate the k6 test report from the JSON file.</p>
+        <div class="error">
+            <strong>Error:</strong> ${error.message}
+        </div>
+        <p><strong>Input file:</strong> <code>${inputFile}</code></p>
+        <p>The test may have generated results that are too large or in an unexpected format.</p>
+    </div>
+</body>
+</html>
+`;
+}
 
-console.log(`✅ k6 HTML report generated: ${outputFile}`);
+function formatValue(value) {
+    if (value === undefined || value === null) return 'N/A';
+    if (typeof value === 'number') {
+        return value < 1 ? value.toFixed(4) : value.toFixed(2);
+    }
+    return value;
+}

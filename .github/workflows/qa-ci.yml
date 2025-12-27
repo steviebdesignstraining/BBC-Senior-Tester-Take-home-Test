@@ -49,35 +49,86 @@ jobs:
       - name: Run Playwright tests
         id: playwright_tests
         run: |
-          echo "▶ Running Playwright tests"
-          if npx playwright test --reporter=ortoni-report; then
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "▶ STARTING PLAYWRIGHT TESTS"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "🔧 Test Configuration:"
+          echo "  BASE_URL: ${BASE_URL}"
+          echo "  TEST_DATA_API: ${TEST_DATA_API}"
+          echo "  TIMEOUT: ${TIMEOUT}"
+          echo ""
+          echo "📋 Test Files to Execute:"
+          find tests -name "*.spec.ts" -type f
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          
+          # Run tests with multiple reporters for better visibility
+          if npx playwright test \
+            --reporter=list \
+            --reporter=ortoni-report \
+            --reporter=html; then
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ PLAYWRIGHT TESTS PASSED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
             echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
           else
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ PLAYWRIGHT TESTS FAILED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "PLAYWRIGHT_STATUS=FAILED" >> $GITHUB_ENV
             echo "playwright_status=FAILED" >> $GITHUB_OUTPUT
+          fi
+          
+          echo ""
+          echo "📊 Test Results Summary:"
+          if [ -f "test-results/.last-run.json" ]; then
+            cat test-results/.last-run.json
           fi
         continue-on-error: true
 
       - name: Prepare reports directory
         run: |
+          echo "📦 Preparing reports directory..."
           mkdir -p site/reports
           
-          # Copy ortoni report if it exists
+          echo ""
+          echo "📂 Available report files:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Check for ortoni report
           if [ -f "ortoni-report.html" ]; then
-            echo "✅ Copying ortoni-report.html to site/reports/"
+            echo "✅ ortoni-report.html found ($(stat -c%s ortoni-report.html 2>/dev/null || stat -f%z ortoni-report.html) bytes)"
             cp ortoni-report.html site/reports/
           else
             echo "⚠️ ortoni-report.html not found"
           fi
           
-          # Copy reports directory if it exists
+          # Check for reports directory
           if [ -d "reports" ]; then
-            echo "✅ Copying reports/ content to site/reports/"
+            echo "✅ reports/ directory found"
+            echo "   Contents:"
+            ls -lh reports/ | head -20
             cp -r reports/* site/reports/ 2>/dev/null || true
           else
             echo "⚠️ reports/ directory not found"
           fi
+          
+          # Check for playwright-report
+          if [ -d "playwright-report" ]; then
+            echo "✅ playwright-report/ directory found"
+            cp -r playwright-report site/ 2>/dev/null || true
+          fi
+          
+          echo ""
+          echo "📊 Final site/reports structure:"
+          ls -lh site/reports/ 2>/dev/null || echo "Empty"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       - name: Generate initial dashboard
         env:
@@ -93,6 +144,26 @@ jobs:
           name: playwright-reports
           path: site
           retention-days: 30
+      
+      - name: Playwright test summary
+        if: always()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 PLAYWRIGHT TEST EXECUTION SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Status: ${{ env.PLAYWRIGHT_STATUS }}"
+          echo "Test Files Executed:"
+          find tests -name "*.spec.ts" -type f | while read file; do
+            echo "  - $file"
+          done
+          echo ""
+          echo "Reports Generated:"
+          find site -name "*.html" -type f | while read file; do
+            echo "  - $file ($(stat -c%s $file 2>/dev/null || stat -f%z $file) bytes)"
+          done
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     outputs:
       playwright_status: ${{ steps.playwright_tests.outputs.playwright_status }}
@@ -127,32 +198,126 @@ jobs:
       - name: Run k6 ${{ matrix.test }} test
         id: k6_test
         run: |
-          mkdir -p k6-results
-          echo "🚀 Running k6 ${{ matrix.test }} test..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "▶ STARTING K6 ${{ matrix.test }} TEST"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "🔧 Test Configuration:"
+          echo "  Test Type: ${{ matrix.test }}"
+          echo "  Test File: k6/${{ matrix.test }}.test.js"
+          echo "  BASE_URL: ${BASE_URL}"
+          echo "  Output: k6-results/${{ matrix.test }}.json"
+          echo ""
           
-          if k6 run k6/${{ matrix.test }}.test.js --out json=k6-results/${{ matrix.test }}.json; then
-            echo "✅ k6 ${{ matrix.test }} test passed"
+          # Check if test file exists
+          if [ ! -f "k6/${{ matrix.test }}.test.js" ]; then
+            echo "❌ ERROR: Test file not found!"
+            exit 1
+          fi
+          
+          echo "✅ Test file found"
+          echo ""
+          echo "📋 Test File Preview (first 30 lines):"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          head -30 k6/${{ matrix.test }}.test.js
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "🚀 Executing k6 test..."
+          echo ""
+          
+          mkdir -p k6-results
+          
+          # Run k6 with verbose output
+          if k6 run \
+            --out json=k6-results/${{ matrix.test }}.json \
+            --summary-export=k6-results/${{ matrix.test }}-summary.json \
+            --verbose \
+            k6/${{ matrix.test }}.test.js; then
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ K6 ${{ matrix.test }} TEST PASSED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "k6_status=PASSED" >> $GITHUB_OUTPUT
+            
+            # Show summary if available
+            if [ -f "k6-results/${{ matrix.test }}-summary.json" ]; then
+              echo ""
+              echo "📊 Test Summary:"
+              cat k6-results/${{ matrix.test }}-summary.json | jq '.' || cat k6-results/${{ matrix.test }}-summary.json
+            fi
           else
-            echo "❌ k6 ${{ matrix.test }} test failed"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ K6 ${{ matrix.test }} TEST FAILED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "k6_status=FAILED" >> $GITHUB_OUTPUT
           fi
+          
+          echo ""
+          echo "📁 Generated files:"
+          ls -lh k6-results/
         continue-on-error: true
 
       - name: Generate k6 HTML report
         run: |
+          echo "📊 Generating HTML report for ${{ matrix.test }} test..."
+          echo ""
+          
           mkdir -p site/k6/${{ matrix.test }}
           
-          if [ -f "scripts/k6-json-to-html.js" ] && [ -f "k6-results/${{ matrix.test }}.json" ]; then
-            echo "✅ Generating HTML report for ${{ matrix.test }} test..."
-            node scripts/k6-json-to-html.js \
-              k6-results/${{ matrix.test }}.json \
-              site/k6/${{ matrix.test }}/index.html
+          # Check for required files
+          echo "🔍 Checking for required files:"
+          if [ -f "scripts/k6-json-to-html.js" ]; then
+            echo "  ✅ scripts/k6-json-to-html.js found"
           else
-            echo "⚠️ Missing script or results file for ${{ matrix.test }}"
-            # Create a placeholder if report generation fails
-            echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation pending...</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+            echo "  ❌ scripts/k6-json-to-html.js NOT found"
           fi
+          
+          if [ -f "k6-results/${{ matrix.test }}.json" ]; then
+            SIZE=$(stat -c%s k6-results/${{ matrix.test }}.json 2>/dev/null || stat -f%z k6-results/${{ matrix.test }}.json)
+            echo "  ✅ k6-results/${{ matrix.test }}.json found (${SIZE} bytes)"
+            
+            # Check if file is too large (>100MB)
+            if [ "$SIZE" -gt 104857600 ]; then
+              echo "  ⚠️  WARNING: JSON file is very large (>100MB), report generation may fail"
+            fi
+          else
+            echo "  ❌ k6-results/${{ matrix.test }}.json NOT found"
+          fi
+          
+          echo ""
+          
+          if [ -f "scripts/k6-json-to-html.js" ] && [ -f "k6-results/${{ matrix.test }}.json" ]; then
+            echo "✅ Generating HTML report..."
+            
+            # Run with error handling - don't fail the job if report generation fails
+            if timeout 300 node scripts/k6-json-to-html.js \
+              k6-results/${{ matrix.test }}.json \
+              site/k6/${{ matrix.test }}/index.html 2>&1; then
+              
+              if [ -f "site/k6/${{ matrix.test }}/index.html" ]; then
+                echo "✅ HTML report generated successfully"
+                echo "   Location: site/k6/${{ matrix.test }}/index.html"
+                echo "   Size: $(stat -c%s site/k6/${{ matrix.test }}/index.html 2>/dev/null || stat -f%z site/k6/${{ matrix.test }}/index.html) bytes"
+              else
+                echo "⚠️  Report script ran but no HTML file was created"
+                echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation completed but no output file was created.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+              fi
+            else
+              EXIT_CODE=$?
+              echo "⚠️  Report generation failed or timed out (exit code: ${EXIT_CODE})"
+              echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation failed. The JSON file may be too large or malformed.</p><p>Check the raw k6 results in the artifacts.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+            fi
+          else
+            echo "⚠️ Missing required files, creating placeholder..."
+            echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Test completed but report files are missing.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+          fi
+          
+          echo ""
+          echo "📁 k6 report directory contents:"
+          ls -lh site/k6/${{ matrix.test }}/
+        continue-on-error: true
 
       - name: Upload k6 report
         uses: actions/upload-artifact@v4
@@ -160,6 +325,24 @@ jobs:
           name: k6-reports-${{ matrix.test }}
           path: site/k6/${{ matrix.test }}
           retention-days: 30
+      
+      - name: k6 test summary
+        if: always()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 K6 ${{ matrix.test }} TEST SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Test Type: ${{ matrix.test }}"
+          echo "Status: ${{ steps.k6_test.outputs.k6_status }}"
+          echo ""
+          echo "Generated Files:"
+          ls -lh k6-results/ 2>/dev/null || echo "No results files"
+          echo ""
+          echo "HTML Report:"
+          ls -lh site/k6/${{ matrix.test }}/ 2>/dev/null || echo "No HTML report"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     outputs:
       k6_status: ${{ steps.k6_test.outputs.k6_status }}
