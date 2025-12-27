@@ -41,7 +41,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -76,6 +76,20 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
             echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
+            
+            # Generate Ortoni report if not already generated
+            if [ ! -f "ortoni-report.html" ]; then
+              echo "📄 Generating Ortoni report..."
+              npx ortoni generate --output ortoni-report.html
+            fi
+          else
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ PLAYWRIGHT TESTS PASSED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
+            echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
           else
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -83,6 +97,12 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "PLAYWRIGHT_STATUS=FAILED" >> $GITHUB_ENV
             echo "playwright_status=FAILED" >> $GITHUB_OUTPUT
+            
+            # Try to generate Ortoni report even if tests failed
+            if [ ! -f "ortoni-report.html" ]; then
+              echo "📄 Attempting to generate Ortoni report from failed tests..."
+              npx ortoni generate --output ortoni-report.html 2>/dev/null || echo "⚠️  Could not generate Ortoni report"
+            fi
           fi
           
           echo ""
@@ -136,7 +156,7 @@ jobs:
           K6_STATUS: PENDING
         run: |
           echo "🎨 Generating initial dashboard..."
-          node scripts/create-fallback-index.js
+          node scripts/update-index.js
 
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v4
@@ -209,18 +229,10 @@ jobs:
           echo "  Output: k6-results/${{ matrix.test }}.json"
           echo ""
           
-          mkdir -p k6-results
-          
           # Check if test file exists
           if [ ! -f "k6/${{ matrix.test }}.test.js" ]; then
-            echo "❌ ERROR: Test file not found: k6/${{ matrix.test }}.test.js"
-            echo "📂 Available k6 files:"
-            ls -la k6/
-            
-            # Create minimal test output so report can be generated
-            echo '{"type":"Metric","metric":"http_reqs","data":{"type":"summary","values":{"count":0}}}' > k6-results/${{ matrix.test }}.json
-            echo "k6_status=SKIPPED" >> $GITHUB_OUTPUT
-            exit 0
+            echo "❌ ERROR: Test file not found!"
+            exit 1
           fi
           
           echo "✅ Test file found"
@@ -233,17 +245,27 @@ jobs:
           echo "🚀 Executing k6 test..."
           echo ""
           
-          # Run k6 with summary export - this ensures we get metrics even if test fails
+          mkdir -p k6-results
+          
+          # Run k6 with verbose output
           if k6 run \
             --out json=k6-results/${{ matrix.test }}.json \
             --summary-export=k6-results/${{ matrix.test }}-summary.json \
-            k6/${{ matrix.test }}.test.js 2>&1 | tee k6-results/${{ matrix.test }}-console.log; then
+            --verbose \
+            k6/${{ matrix.test }}.test.js; then
             
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ K6 ${{ matrix.test }} TEST PASSED"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "k6_status=PASSED" >> $GITHUB_OUTPUT
+            
+            # Show summary if available
+            if [ -f "k6-results/${{ matrix.test }}-summary.json" ]; then
+              echo ""
+              echo "📊 Test Summary:"
+              cat k6-results/${{ matrix.test }}-summary.json | jq '.' || cat k6-results/${{ matrix.test }}-summary.json
+            fi
           else
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -255,14 +277,6 @@ jobs:
           echo ""
           echo "📁 Generated files:"
           ls -lh k6-results/
-          
-          echo ""
-          echo "📊 JSON output sample (first 10 lines):"
-          head -10 k6-results/${{ matrix.test }}.json 2>/dev/null || echo "No JSON output"
-          
-          echo ""
-          echo "📊 Summary export (if available):"
-          cat k6-results/${{ matrix.test }}-summary.json 2>/dev/null || echo "No summary export"
         continue-on-error: true
 
       - name: Generate k6 HTML report
@@ -323,6 +337,37 @@ jobs:
           echo ""
           echo "📁 k6 report directory contents:"
           ls -lh site/k6/${{ matrix.test }}/
+        continue-on-error: true
+      
+      - name: Generate k6 summary for Ortoni report
+        run: |
+          echo "📊 Generating k6 summary for Ortoni report..."
+          
+          # Create k6 summary data
+          mkdir -p site/k6-summary
+          
+          # Extract key metrics from k6 results using our custom script
+          if [ -f "scripts/extract-k6-stats.js" ]; then
+            echo "✅ Using custom k6 stats extractor..."
+            node scripts/extract-k6-stats.js
+          else
+            echo "⚠️  Custom k6 stats extractor not found, using basic extraction..."
+            
+            # Extract key metrics from k6 results
+            if [ -f "k6-results/${{ matrix.test }}-summary.json" ]; then
+              echo "✅ Found k6 summary file for ${{ matrix.test }}"
+              cp k6-results/${{ matrix.test }}-summary.json site/k6-summary/${{ matrix.test }}-summary.json
+            fi
+            
+            # Create a combined k6 summary
+            if [ -f "k6-results/${{ matrix.test }}.json" ]; then
+              echo "✅ Found k6 results file for ${{ matrix.test }}"
+              # Extract basic stats using jq if available
+              if command -v jq >/dev/null 2>&1; then
+                jq '{test: "${{ matrix.test }}", timestamp: now|strftime("%Y-%m-%d %H:%M:%S"), metrics: .}' k6-results/${{ matrix.test }}.json > site/k6-summary/${{ matrix.test }}-metrics.json 2>/dev/null || echo "jq not available for detailed metrics"
+              fi
+            fi
+          fi
         continue-on-error: true
 
       - name: Upload k6 report
@@ -445,6 +490,7 @@ jobs:
           PLAYWRIGHT_STATUS: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}
           K6_STATUS: ${{ needs.k6.outputs.k6_status || 'UNKNOWN' }}
           BASE_URL: ${{ secrets.BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🎨 Generating final dashboard..."
           echo ""
@@ -456,18 +502,37 @@ jobs:
           echo "  GITHUB_SHA: ${GITHUB_SHA}"
           echo "  GITHUB_REF: ${GITHUB_REF}"
           echo "  GITHUB_RUN_NUMBER: ${GITHUB_RUN_NUMBER}"
+          echo "  GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
           echo ""
           
-          # Verify script exists
-          if [ ! -f "scripts/create-fallback-index.js" ]; then
-            echo "❌ ERROR: scripts/create-fallback-index.js not found!"
+          # Verify scripts exist
+          if [ ! -f "scripts/update-index.js" ]; then
+            echo "❌ ERROR: scripts/update-index.js not found!"
             echo "Available scripts:"
             ls -la scripts/
             exit 1
           fi
           
+          if [ ! -f "scripts/fetch-github-data.js" ]; then
+            echo "❌ ERROR: scripts/fetch-github-data.js not found!"
+            exit 1
+          fi
+          
+          if [ ! -f "scripts/extract-k6-stats.js" ]; then
+            echo "❌ ERROR: scripts/extract-k6-stats.js not found!"
+            exit 1
+          fi
+          
+          echo "✅ Running GitHub data fetcher..."
+          node scripts/fetch-github-data.js
+          
+          echo ""
+          echo "✅ Running k6 stats extractor..."
+          node scripts/extract-k6-stats.js
+          
+          echo ""
           echo "✅ Running dashboard generator..."
-          node scripts/create-fallback-index.js
+          node scripts/update-index.js
           
           if [ $? -eq 0 ]; then
             echo ""
