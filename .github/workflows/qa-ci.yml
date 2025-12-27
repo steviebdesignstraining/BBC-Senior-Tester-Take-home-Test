@@ -83,14 +83,6 @@ jobs:
               npx ortoni generate --output ortoni-report.html
             fi
           else
-            
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "✅ PLAYWRIGHT TESTS PASSED"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
-            echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
-          else
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "❌ PLAYWRIGHT TESTS FAILED"
