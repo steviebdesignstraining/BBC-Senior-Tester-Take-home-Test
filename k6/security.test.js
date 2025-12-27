@@ -1,5 +1,6 @@
 // k6 Security Test - Measures system security under various attack scenarios
 import { group, sleep, check } from 'k6';
+import http from 'k6/http';
 import config, { makeRequest, validateResponse, generateTestData } from './config.js';
 
 // Security test configuration

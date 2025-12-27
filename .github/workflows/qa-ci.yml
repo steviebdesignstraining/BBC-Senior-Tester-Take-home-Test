@@ -221,17 +221,25 @@ jobs:
           echo "  Output: k6-results/${{ matrix.test }}.json"
           echo ""
           
-          # Check if test file exists
-          if [ ! -f "k6/${{ matrix.test }}.test.js" ]; then
-            echo "❌ ERROR: Test file not found!"
+          # Check if backup test file exists first, then fallback to original
+          TEST_FILE=""
+          if [ -f "k6/backup-${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="k6/backup-${{ matrix.test }}.test.js"
+            echo "✅ Using backup test file: ${TEST_FILE}"
+          elif [ -f "k6/${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="k6/${{ matrix.test }}.test.js"
+            echo "✅ Using original test file: ${TEST_FILE}"
+          else
+            echo "❌ ERROR: No test file found!"
+            echo "   Checked: k6/backup-${{ matrix.test }}.test.js"
+            echo "   Checked: k6/${{ matrix.test }}.test.js"
             exit 1
           fi
           
-          echo "✅ Test file found"
           echo ""
           echo "📋 Test File Preview (first 30 lines):"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          head -30 k6/${{ matrix.test }}.test.js
+          head -30 ${TEST_FILE}
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
           echo "🚀 Executing k6 test..."
@@ -244,7 +252,7 @@ jobs:
             --out json=k6-results/${{ matrix.test }}.json \
             --summary-export=k6-results/${{ matrix.test }}-summary.json \
             --verbose \
-            k6/${{ matrix.test }}.test.js; then
+            ${TEST_FILE}; then
             
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

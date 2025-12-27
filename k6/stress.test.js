@@ -1,5 +1,6 @@
 // k6 Stress Test - Measures system behavior under extreme load conditions
 import { group, sleep, check } from 'k6';
+import http from 'k6/http';
 import config, { makeRequest, validateResponse, generateTestData } from './config.js';
 
 // Stress test configuration
