@@ -1,0 +1,3 @@
+{"type":"Point","metric":"http_reqs","data":{"time":"2025-12-27T09:50:00.000Z","value":1,"tags":{"name":"pet_crud_create"}}}
+{"type":"Point","metric":"http_req_duration","data":{"time":"2025-12-27T09:50:00.000Z","value":150,"tags":{"name":"pet_crud_create"}}}
+{"type":"Point","metric":"http_req_failed","data":{"time":"2025-12-27T09:50:00.000Z","value":0,"tags":{"name":"pet_crud_create"}}}

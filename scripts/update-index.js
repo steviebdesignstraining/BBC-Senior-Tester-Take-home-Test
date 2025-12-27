@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { fetchGitHubData, getFallbackData } = require('./fetch-github-data');
 
 // Template for the main dashboard
 const dashboardTemplate = `
@@ -246,7 +247,12 @@ const dashboardTemplate = `
                         <i class="bi bi-arrow-up-right report-icon text-danger"></i>
                         <h5 class="card-title">Load Test</h5>
                         <p class="card-text">Performance test under expected load</p>
-                        <a href="{{K6_LOAD}}" class="btn btn-danger" target="_blank">
+                        <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
+                            <div>Total Requests: <span id="load-requests">0</span></div>
+                            <div>Success Rate: <span id="load-success">0%</span></div>
+                            <div>Avg Response: <span id="load-avg">0ms</span></div>
+                        </div>
+                        <a href="{{K6_LOAD}}" class="btn btn-danger mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
                         </a>
                     </div>
@@ -258,7 +264,12 @@ const dashboardTemplate = `
                         <i class="bi bi-battery-full report-icon text-warning"></i>
                         <h5 class="card-title">Stress Test</h5>
                         <p class="card-text">Performance test under extreme load</p>
-                        <a href="{{K6_STRESS}}" class="btn btn-warning" target="_blank">
+                        <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
+                            <div>Total Requests: <span id="stress-requests">0</span></div>
+                            <div>Success Rate: <span id="stress-success">0%</span></div>
+                            <div>Avg Response: <span id="stress-avg">0ms</span></div>
+                        </div>
+                        <a href="{{K6_STRESS}}" class="btn btn-warning mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
                         </a>
                     </div>
@@ -270,7 +281,12 @@ const dashboardTemplate = `
                         <i class="bi bi-shield-check report-icon text-success"></i>
                         <h5 class="card-title">Security Test</h5>
                         <p class="card-text">Security-focused performance tests</p>
-                        <a href="{{K6_SECURITY}}" class="btn btn-success" target="_blank">
+                        <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
+                            <div>Total Requests: <span id="security-requests">0</span></div>
+                            <div>Success Rate: <span id="security-success">0%</span></div>
+                            <div>Avg Response: <span id="security-avg">0ms</span></div>
+                        </div>
+                        <a href="{{K6_SECURITY}}" class="btn btn-success mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
                         </a>
                     </div>
@@ -282,7 +298,12 @@ const dashboardTemplate = `
                         <i class="bi bi-speedometer report-icon text-primary"></i>
                         <h5 class="card-title">Performance Test</h5>
                         <p class="card-text">General performance benchmark tests</p>
-                        <a href="{{K6_PERFORMANCE}}" class="btn btn-primary" target="_blank">
+                        <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
+                            <div>Total Requests: <span id="performance-requests">0</span></div>
+                            <div>Success Rate: <span id="performance-success">0%</span></div>
+                            <div>Avg Response: <span id="performance-avg">0ms</span></div>
+                        </div>
+                        <a href="{{K6_PERFORMANCE}}" class="btn btn-primary mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
                         </a>
                     </div>
@@ -303,9 +324,61 @@ const dashboardTemplate = `
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+<script>
+// Load k6 statistics dynamically
+document.addEventListener('DOMContentLoaded', function() {
+    loadK6Stats();
+});
+
+async function loadK6Stats() {
+    try {
+        // Try to load k6 summary data
+        const response = await fetch('./k6-summary/k6-summary.json');
+        if (!response.ok) {
+            throw new Error('K6 summary not available');
+        }
+        
+        const summary = await response.json();
+        
+        // Update each test card with real stats
+        Object.keys(summary.tests).forEach(testType => {
+            const stats = summary.tests[testType];
+            const testKey = testType.toLowerCase();
+            
+            // Update request count
+            const requestsEl = document.getElementById(testKey + '-requests');
+            if (requestsEl) {
+                requestsEl.textContent = stats.metrics.totalRequests.toLocaleString();
+            }
+            
+            // Update success rate
+            const successEl = document.getElementById(testKey + '-success');
+            if (successEl) {
+                successEl.textContent = stats.metrics.successRate + '%';
+                successEl.style.color = stats.metrics.successRate >= 95 ? '#28a745' :
+                                       stats.metrics.successRate >= 80 ? '#ffc107' : '#dc3545';
+            }
+            
+            // Update average response time
+            const avgEl = document.getElementById(testKey + '-avg');
+            if (avgEl) {
+                avgEl.textContent = stats.metrics.avgDuration + 'ms';
+            }
+        });
+        
+        console.log('✅ K6 stats loaded successfully');
+    } catch (error) {
+        console.warn('⚠️  Could not load k6 stats:', error.message);
+        // Fallback to placeholder text
+        document.querySelectorAll('.k6-stats span').forEach(span => {
+            span.textContent = 'N/A';
+        });
+    }
+}
+</script>
 `;
 
-function main() {
+async function main() {
     const siteDir = path.join(__dirname, '..', 'site');
     const reportsDir = path.join(siteDir, 'reports');
     const metadataFile = path.join(reportsDir, 'metadata.json');
@@ -327,6 +400,17 @@ function main() {
         GITHUB_RUN_NUMBER: process.env.GITHUB_RUN_NUMBER
     });
 
+    // Fetch GitHub Actions data
+    let githubData = null;
+    if (process.env.GITHUB_ACTIONS) {
+        console.log('📡 Fetching GitHub Actions data...');
+        try {
+            githubData = await fetchGitHubData();
+        } catch (error) {
+            console.warn('⚠️  Failed to fetch GitHub data:', error.message);
+        }
+    }
+
     // Extract branch name from GITHUB_REF
     const branch = process.env.GITHUB_REF ? process.env.GITHUB_REF.replace('refs/heads/', '') :
                    process.env.GITHUB_REF_NAME || 'unknown';
@@ -335,31 +419,46 @@ function main() {
     const playwrightStatus = process.env.PLAYWRIGHT_STATUS || 'RUNNING';
     const k6Status = process.env.K6_STATUS || 'RUNNING';
     
-    // Calculate overall pipeline status
+    // Use GitHub data if available, otherwise use environment variables
     let pipelineStatus = 'RUNNING';
     let pipelineStatusClass = '';
     
-    if (playwrightStatus === 'FAILED' || k6Status === 'FAILED') {
-        pipelineStatus = 'FAILED';
-        pipelineStatusClass = 'status-failed';
-    } else if (playwrightStatus === 'PASSED' && k6Status === 'PASSED') {
-        pipelineStatus = 'PASSED';
-        pipelineStatusClass = 'status-passed';
+    if (githubData) {
+        // Use GitHub data for more accurate status
+        if (githubData.jobs.playwright === 'FAILED' || githubData.jobs.k6 === 'FAILED') {
+            pipelineStatus = 'FAILED';
+            pipelineStatusClass = 'status-failed';
+        } else if (githubData.jobs.playwright === 'PASSED' && githubData.jobs.k6 === 'PASSED') {
+            pipelineStatus = 'PASSED';
+            pipelineStatusClass = 'status-passed';
+        } else {
+            pipelineStatus = 'RUNNING';
+            pipelineStatusClass = 'status-warning';
+        }
     } else {
-        pipelineStatus = 'RUNNING';
-        pipelineStatusClass = 'status-warning';
+        // Fallback to environment variables
+        if (playwrightStatus === 'FAILED' || k6Status === 'FAILED') {
+            pipelineStatus = 'FAILED';
+            pipelineStatusClass = 'status-failed';
+        } else if (playwrightStatus === 'PASSED' && k6Status === 'PASSED') {
+            pipelineStatus = 'PASSED';
+            pipelineStatusClass = 'status-passed';
+        } else {
+            pipelineStatus = 'RUNNING';
+            pipelineStatusClass = 'status-warning';
+        }
     }
 
     // Read metadata or create default
     let metadata = {
-        lastRun: process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString(),
-        commit: process.env.GITHUB_SHA || process.env.GITHUB_REF_NAME || 'unknown',
-        commitShort: process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown',
-        runId: process.env.GITHUB_RUN_ID || 'unknown',
-        runNumber: process.env.GITHUB_RUN_NUMBER || 'unknown',
-        branch: branch,
-        workflowName: process.env.GITHUB_WORKFLOW || 'QA CI Pipeline',
-        event: process.env.GITHUB_EVENT_NAME || 'push',
+        lastRun: githubData ? githubData.run.updated_at : (process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString()),
+        commit: githubData ? githubData.run.head_sha : (process.env.GITHUB_SHA || process.env.GITHUB_REF_NAME || 'unknown'),
+        commitShort: githubData ? githubData.run.head_sha.substring(0, 7) : (process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown'),
+        runId: githubData ? githubData.run.id : (process.env.GITHUB_RUN_ID || 'unknown'),
+        runNumber: githubData ? githubData.run.number : (process.env.GITHUB_RUN_NUMBER || 'unknown'),
+        branch: githubData ? githubData.run.head_branch : branch,
+        workflowName: githubData ? githubData.run.workflow_name : (process.env.GITHUB_WORKFLOW || 'QA CI Pipeline'),
+        event: githubData ? githubData.run.event : (process.env.GITHUB_EVENT_NAME || 'push'),
         ortoni: 'reports/ortoni-report.html',
         k6: {
             load: 'k6/load/index.html',
@@ -368,12 +467,12 @@ function main() {
             security: 'k6/security/index.html'
         },
         // Test status information
-        playwrightStatus: playwrightStatus,
-        k6Status: k6Status,
+        playwrightStatus: githubData ? githubData.jobs.playwright : playwrightStatus,
+        k6Status: githubData ? githubData.jobs.k6 : k6Status,
         pipelineStatus: pipelineStatus,
         pipelineStatusClass: pipelineStatusClass,
-        playwrightStatusClass: playwrightStatus === 'FAILED' ? 'bg-danger text-white' : (playwrightStatus === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark'),
-        k6StatusClass: k6Status === 'FAILED' ? 'bg-danger text-white' : (k6Status === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark')
+        playwrightStatusClass: (githubData ? githubData.jobs.playwright : playwrightStatus) === 'FAILED' ? 'bg-danger text-white' : ((githubData ? githubData.jobs.playwright : playwrightStatus) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark'),
+        k6StatusClass: (githubData ? githubData.jobs.k6 : k6Status) === 'FAILED' ? 'bg-danger text-white' : ((githubData ? githubData.jobs.k6 : k6Status) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark')
     };
 
     // Only load existing metadata if we're in a GitHub Actions environment
@@ -394,25 +493,25 @@ function main() {
 
     // Generate dashboard
     let dashboard = dashboardTemplate
-        .replace('{{LAST_RUN}}', new Date(metadata.lastRun).toLocaleString())
-        .replace('{{COMMIT_SHORT}}', metadata.commitShort)
-        .replace('{{RUN_NUMBER}}', metadata.runNumber)
-        .replace('{{WORKFLOW_NAME}}', metadata.workflowName)
-        .replace('{{BRANCH}}', metadata.branch)
-        .replace('{{EVENT}}', metadata.event)
-        .replace('{{ORTONI_LINK}}', metadata.ortoni)
-        .replace('{{K6_LOAD}}', metadata.k6.load)
-        .replace('{{K6_PERFORMANCE}}', metadata.k6.performance)
-        .replace('{{K6_STRESS}}', metadata.k6.stress)
-        .replace('{{K6_SECURITY}}', metadata.k6.security)
-        .replace('{{TIMESTAMP}}', new Date().toISOString())
-        .replace('{{ENVIRONMENT}}', process.env.BASE_URL || 'Unknown')
-        .replace('{{PIPELINE_STATUS_TEXT}}', metadata.pipelineStatus)
-        .replace('{{PIPELINE_STATUS_CLASS}}', metadata.pipelineStatusClass)
-        .replace('{{PLAYWRIGHT_STATUS}}', metadata.playwrightStatus)
-        .replace('{{PLAYWRIGHT_STATUS_CLASS}}', metadata.playwrightStatusClass)
-        .replace('{{K6_STATUS}}', metadata.k6Status)
-        .replace('{{K6_STATUS_CLASS}}', metadata.k6StatusClass);
+        .replace(/\{\{LAST_RUN\}\}/g, new Date(metadata.lastRun).toLocaleString())
+        .replace(/\{\{COMMIT_SHORT\}\}/g, metadata.commitShort)
+        .replace(/\{\{RUN_NUMBER\}\}/g, metadata.runNumber)
+        .replace(/\{\{WORKFLOW_NAME\}\}/g, metadata.workflowName)
+        .replace(/\{\{BRANCH\}\}/g, metadata.branch)
+        .replace(/\{\{EVENT\}\}/g, metadata.event)
+        .replace(/\{\{ORTONI_LINK\}\}/g, metadata.ortoni)
+        .replace(/\{\{K6_LOAD\}\}/g, metadata.k6.load)
+        .replace(/\{\{K6_PERFORMANCE\}\}/g, metadata.k6.performance)
+        .replace(/\{\{K6_STRESS\}\}/g, metadata.k6.stress)
+        .replace(/\{\{K6_SECURITY\}\}/g, metadata.k6.security)
+        .replace(/\{\{TIMESTAMP\}\}/g, new Date().toISOString())
+        .replace(/\{\{ENVIRONMENT\}\}/g, process.env.BASE_URL || 'Unknown')
+        .replace(/\{\{PIPELINE_STATUS_TEXT\}\}/g, metadata.pipelineStatus)
+        .replace(/\{\{PIPELINE_STATUS_CLASS\}\}/g, metadata.pipelineStatusClass)
+        .replace(/\{\{PLAYWRIGHT_STATUS\}\}/g, metadata.playwrightStatus)
+        .replace(/\{\{PLAYWRIGHT_STATUS_CLASS\}\}/g, metadata.playwrightStatusClass)
+        .replace(/\{\{K6_STATUS\}\}/g, metadata.k6Status)
+        .replace(/\{\{K6_STATUS_CLASS\}\}/g, metadata.k6StatusClass);
 
     const dashboardFile = path.join(siteDir, 'index.html');
     fs.writeFileSync(dashboardFile, dashboard);
@@ -425,7 +524,7 @@ function main() {
 }
 
 if (require.main === module) {
-    main();
+    main().catch(console.error);
 }
 
 module.exports = { main };

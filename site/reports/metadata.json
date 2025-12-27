@@ -1,9 +1,12 @@
 {
-  "lastRun": "2025-12-26T22:53:16.215Z",
-  "commit": "abc1234",
-  "commitShort": "abc1234",
-  "runId": "12345",
-  "runNumber": "678",
+  "lastRun": "2025-12-27T10:08:00.666Z",
+  "commit": "unknown",
+  "commitShort": "unknown",
+  "runId": "unknown",
+  "runNumber": "unknown",
+  "branch": "unknown",
+  "workflowName": "QA CI Pipeline",
+  "event": "push",
   "ortoni": "reports/ortoni-report.html",
   "k6": {
     "load": "k6/load/index.html",
@@ -11,7 +14,10 @@
     "stress": "k6/stress/index.html",
     "security": "k6/security/index.html"
   },
-  "branch": "main",
-  "workflowName": "QA CI Pipeline",
-  "event": "push"
+  "playwrightStatus": "RUNNING",
+  "k6Status": "RUNNING",
+  "pipelineStatus": "RUNNING",
+  "pipelineStatusClass": "status-warning",
+  "playwrightStatusClass": "bg-warning text-dark",
+  "k6StatusClass": "bg-warning text-dark"
 }

@@ -1,0 +1,21 @@
+{
+  "repo": "steviebdesignstraining/BBC-Senior-Tester-Take-home-Test",
+  "run": {
+    "id": "unknown",
+    "number": "unknown",
+    "status": "RUNNING",
+    "conclusion": null,
+    "created_at": "2025-12-27T09:56:50.897Z",
+    "updated_at": "2025-12-27T09:56:50.897Z",
+    "head_sha": "unknown",
+    "head_branch": "main",
+    "event": "push",
+    "workflow_id": "unknown",
+    "workflow_name": "QA CI Pipeline"
+  },
+  "jobs": {
+    "playwright": "RUNNING",
+    "k6": "RUNNING"
+  },
+  "timestamp": "2025-12-27T09:56:50.897Z"
+}
