@@ -103,6 +103,76 @@ const dashboardTemplate = `
             </div>
         </div>
 
+        <!-- Build Information -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="mb-4"><i class="bi bi-info-circle"></i> Build Information</h2>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-calendar-event report-icon text-primary"></i>
+                        <h5 class="card-title">Last Run</h5>
+                        <p class="card-text">{{LAST_RUN}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-hash report-icon text-success"></i>
+                        <h5 class="card-title">Commit</h5>
+                        <p class="card-text">{{COMMIT_SHORT}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-gear report-icon text-warning"></i>
+                        <h5 class="card-title">Run</h5>
+                        <p class="card-text">#{{RUN_NUMBER}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-branch report-icon text-info"></i>
+                        <h5 class="card-title">Branch</h5>
+                        <p class="card-text">{{BRANCH}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-diagram-3 report-icon text-danger"></i>
+                        <h5 class="card-title">Workflow</h5>
+                        <p class="card-text">{{WORKFLOW_NAME}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-cloud-arrow-up report-icon text-secondary"></i>
+                        <h5 class="card-title">Event</h5>
+                        <p class="card-text">{{EVENT}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-globe report-icon text-dark"></i>
+                        <h5 class="card-title">Environment</h5>
+                        <p class="card-text">{{ENVIRONMENT}}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Playwright Test Reports -->
         <div class="row mb-5">
             <div class="col-12">

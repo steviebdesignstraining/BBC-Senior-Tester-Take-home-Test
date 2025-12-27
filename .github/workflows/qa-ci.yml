@@ -136,7 +136,7 @@ jobs:
           K6_STATUS: PENDING
         run: |
           echo "🎨 Generating initial dashboard..."
-          node scripts/create-fallback-index.js
+          node scripts/update-index.js
 
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v4
@@ -453,15 +453,15 @@ jobs:
           echo ""
           
           # Verify script exists
-          if [ ! -f "scripts/create-fallback-index.js" ]; then
-            echo "❌ ERROR: scripts/create-fallback-index.js not found!"
+          if [ ! -f "scripts/update-index.js" ]; then
+            echo "❌ ERROR: scripts/update-index.js not found!"
             echo "Available scripts:"
             ls -la scripts/
             exit 1
           fi
           
           echo "✅ Running dashboard generator..."
-          node scripts/create-fallback-index.js
+          node scripts/update-index.js
           
           if [ $? -eq 0 ]; then
             echo ""
