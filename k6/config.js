@@ -63,6 +63,7 @@ export function makeRequest(method, endpoint, body = null, params = {}) {
   const url = `${config.baseUrl}${endpoint}`;
   const requestParams = {
     headers: config.headers,
+    timeout: '30s', // Add timeout to prevent hanging
     ...params
   };
   
@@ -72,21 +73,31 @@ export function makeRequest(method, endpoint, body = null, params = {}) {
   
   let response;
   
-  switch (method.toLowerCase()) {
-    case 'get':
-      response = http.get(url, requestParams);
-      break;
-    case 'post':
-      response = http.post(url, JSON.stringify(body), requestParams);
-      break;
-    case 'put':
-      response = http.put(url, JSON.stringify(body), requestParams);
-      break;
-    case 'delete':
-      response = http.del(url, null, requestParams);
-      break;
-    default:
-      throw new Error(`Unsupported HTTP method: ${method}`);
+  try {
+    switch (method.toLowerCase()) {
+      case 'get':
+        response = http.get(url, requestParams);
+        break;
+      case 'post':
+        response = http.post(url, JSON.stringify(body), requestParams);
+        break;
+      case 'put':
+        response = http.put(url, JSON.stringify(body), requestParams);
+        break;
+      case 'delete':
+        response = http.del(url, null, requestParams);
+        break;
+      default:
+        throw new Error(`Unsupported HTTP method: ${method}`);
+    }
+  } catch (error) {
+    // If request fails, create a mock response with failure indicators
+    response = {
+      status: 0,
+      body: JSON.stringify({ error: 'Request failed', message: error.message }),
+      timings: { duration: 0 },
+      headers: {}
+    };
   }
   
   return response;
