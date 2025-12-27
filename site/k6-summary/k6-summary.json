@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-12-27T10:24:45.000Z",
+  "tests": {
+    "load": {
+      "test": "load",
+      "timestamp": "2025-12-27T10:24:45.000Z",
+      "metrics": {
+        "totalRequests": 1500,
+        "failedRequests": 12,
+        "successRate": 99.2,
+        "avgDuration": 145.67,
+        "p95Duration": 320.45,
+        "p99Duration": 580.23,
+        "maxVUs": 50,
+        "totalIterations": 1500
+      },
+      "summary": {},
+      "rawFile": "k6-results/load.json"
+    },
+    "performance": {
+      "test": "performance",
+      "timestamp": "2025-12-27T10:24:45.000Z",
+      "metrics": {
+        "totalRequests": 800,
+        "failedRequests": 4,
+        "successRate": 99.5,
+        "avgDuration": 120.34,
+        "p95Duration": 280.12,
+        "p99Duration": 450.67,
+        "maxVUs": 25,
+        "totalIterations": 800
+      },
+      "summary": {},
+      "rawFile": "k6-results/performance.json"
+    },
+    "stress": {
+      "test": "stress",
+      "timestamp": "2025-12-27T10:24:45.000Z",
+      "metrics": {
+        "totalRequests": 2000,
+        "failedRequests": 45,
+        "successRate": 97.75,
+        "avgDuration": 280.89,
+        "p95Duration": 650.34,
+        "p99Duration": 1200.56,
+        "maxVUs": 100,
+        "totalIterations": 2000
+      },
+      "summary": {},
+      "rawFile": "k6-results/stress.json"
+    },
+    "security": {
+      "test": "security",
+      "timestamp": "2025-12-27T10:24:45.000Z",
+      "metrics": {
+        "totalRequests": 600,
+        "failedRequests": 2,
+        "successRate": 99.67,
+        "avgDuration": 180.23,
+        "p95Duration": 420.78,
+        "p99Duration": 750.45,
+        "maxVUs": 30,
+        "totalIterations": 600
+      },
+      "summary": {},
+      "rawFile": "k6-results/security.json"
+    }
+  },
+  "overall": {
+    "totalRequests": 4900,
+    "totalFailed": 63,
+    "totalIterations": 4900,
+    "avgSuccessRate": 99.03
+  }
+}
