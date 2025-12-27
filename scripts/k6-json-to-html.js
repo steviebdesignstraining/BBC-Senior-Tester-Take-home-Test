@@ -10,77 +10,44 @@ if (args.length < 2) {
 
 const inputFile = args[0];
 const outputFile = args[1];
-const testName = path.basename(inputFile, '.json').replace(/-/g, ' ').toUpperCase();
 
-console.log(`📊 Processing k6 results for ${testName}...`);
+console.log(`📊 Processing k6 results...`);
 console.log(`  Input: ${inputFile}`);
 console.log(`  Output: ${outputFile}`);
 
 // Check if input file exists
 if (!fs.existsSync(inputFile)) {
     console.error(`❌ Error: Input file not found: ${inputFile}`);
-    // Create placeholder report
-    const html = generatePlaceholderReport(testName, 'Input file not found');
-    ensureOutputDir(outputFile);
-    fs.writeFileSync(outputFile, html);
-    console.log('⚠️  Created placeholder report');
-    process.exit(0);
+    process.exit(1);
 }
 
 try {
-    // Get file stats
+    // Get file stats to check size
     const stats = fs.statSync(inputFile);
-    console.log(`  File size: ${(stats.size / 1024).toFixed(2)} KB`);
+    console.log(`  File size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
     
-    if (stats.size === 0) {
-        console.warn('⚠️  File is empty, creating placeholder...');
-        const html = generatePlaceholderReport(testName, 'Test output file is empty');
-        ensureOutputDir(outputFile);
-        fs.writeFileSync(outputFile, html);
-        process.exit(0);
+    // If file is too large (>50MB), use streaming approach
+    if (stats.size > 50 * 1024 * 1024) {
+        console.log('⚠️  Large file detected, using streaming parser...');
+        processLargeFile(inputFile, outputFile);
+    } else {
+        processNormalFile(inputFile, outputFile);
     }
-    
-    // Try to process the file
-    const result = processK6File(inputFile);
-    
-    if (!result || !result.summary || Object.keys(result.summary).length === 0) {
-        console.warn('⚠️  No metrics found in file, creating placeholder...');
-        const html = generatePlaceholderReport(testName, 'No metrics data found in k6 output');
-        ensureOutputDir(outputFile);
-        fs.writeFileSync(outputFile, html);
-        process.exit(0);
-    }
-    
-    // Generate HTML report
-    const html = generateHtmlReport(result.summary, result.metrics, testName);
-    ensureOutputDir(outputFile);
-    fs.writeFileSync(outputFile, html);
     
     console.log('✅ HTML report generated successfully!');
-    console.log(`  Total Requests: ${result.summary.http_reqs?.values?.count || 0}`);
-    console.log(`  Avg Duration: ${result.summary.http_req_duration?.values?.avg?.toFixed(2) || 0}ms`);
-    
 } catch (error) {
     console.error('❌ Error generating report:', error.message);
-    console.error(error.stack);
     
-    // Create fallback report
-    const html = generateFallbackReport(testName, error);
-    ensureOutputDir(outputFile);
-    fs.writeFileSync(outputFile, html);
+    // Create a fallback HTML report with error info
+    const fallbackHtml = generateFallbackReport(inputFile, error);
+    fs.writeFileSync(outputFile, fallbackHtml);
     
     console.log('⚠️  Created fallback report with error information');
-    process.exit(0);
+    process.exit(0); // Don't fail the build
 }
 
-function ensureOutputDir(outputFile) {
-    const outputDir = path.dirname(outputFile);
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-    }
-}
-
-function processK6File(inputFile) {
+function processNormalFile(inputFile, outputFile) {
+    // Read file line by line (NDJSON format)
     const fileContent = fs.readFileSync(inputFile, 'utf8');
     const lines = fileContent.trim().split('\n');
     
@@ -94,24 +61,22 @@ function processK6File(inputFile) {
         iterations: []
     };
     
-    let summary = {};
-    let linesParsed = 0;
-    let linesSkipped = 0;
+    let summary = null;
     
-    // Parse each line as separate JSON (NDJSON format)
+    // Parse each line as separate JSON
     lines.forEach((line, index) => {
         if (!line.trim()) return;
         
         try {
             const data = JSON.parse(line);
-            linesParsed++;
             
-            // Capture metric summary data
+            // Capture summary data
             if (data.type === 'Metric' && data.data && data.data.type === 'summary') {
+                if (!summary) summary = {};
                 summary[data.metric] = data.data;
             }
             
-            // Capture point data
+            // Capture point data for charts
             if (data.type === 'Point' && data.data) {
                 const metricName = data.metric;
                 if (metrics[metricName]) {
@@ -119,116 +84,99 @@ function processK6File(inputFile) {
                 }
             }
         } catch (err) {
-            linesSkipped++;
-            // Only log first and last few errors
-            if (index < 3 || index > lines.length - 3) {
+            // Skip invalid JSON lines
+            if (index < 5 || index > lines.length - 5) {
                 console.log(`  ⚠️  Skipping invalid JSON at line ${index + 1}`);
             }
         }
     });
     
-    console.log(`  Parsed: ${linesParsed} lines, Skipped: ${linesSkipped} lines`);
-    console.log(`  Found metrics: ${Object.keys(summary).join(', ')}`);
+    console.log(`  Parsed metrics:`, Object.keys(summary || {}).length);
     
-    return { summary, metrics };
+    // Generate HTML report
+    const html = generateHtmlReport(summary, metrics, path.basename(inputFile));
+    
+    // Ensure output directory exists
+    const outputDir = path.dirname(outputFile);
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(outputFile, html);
 }
 
-function generateHtmlReport(summary, metrics, testName) {
-    // Calculate statistics
+function processLargeFile(inputFile, outputFile) {
+    const readline = require('readline');
+    const fileStream = fs.createReadStream(inputFile);
+    
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+    
+    const metrics = {};
+    let summary = null;
+    let lineCount = 0;
+    
+    return new Promise((resolve, reject) => {
+        rl.on('line', (line) => {
+            if (!line.trim()) return;
+            lineCount++;
+            
+            try {
+                const data = JSON.parse(line);
+                
+                if (data.type === 'Metric' && data.data && data.data.type === 'summary') {
+                    if (!summary) summary = {};
+                    summary[data.metric] = data.data;
+                }
+            } catch (err) {
+                // Skip invalid lines
+            }
+        });
+        
+        rl.on('close', () => {
+            console.log(`  Processed ${lineCount} lines (streaming mode)`);
+            const html = generateHtmlReport(summary, {}, path.basename(inputFile));
+            fs.writeFileSync(outputFile, html);
+            resolve();
+        });
+        
+        rl.on('error', reject);
+    });
+}
+
+function generateHtmlReport(summary, metrics, filename) {
+    const testName = filename.replace('.json', '').replace(/-/g, ' ').toUpperCase();
+    
+    // Calculate summary statistics
     let totalRequests = 0;
     let failedRequests = 0;
     let avgDuration = 0;
-    let minDuration = 0;
-    let maxDuration = 0;
-    let medianDuration = 0;
-    let p90Duration = 0;
     let p95Duration = 0;
     let p99Duration = 0;
-    let maxVUs = 0;
-    let iterations = 0;
     
-    if (summary.http_reqs) {
-        totalRequests = summary.http_reqs.values?.count || 0;
-    }
-    
-    if (summary.http_req_failed && totalRequests > 0) {
-        const failedRate = summary.http_req_failed.values?.rate || 0;
-        failedRequests = Math.round(totalRequests * failedRate);
-    }
-    
-    if (summary.http_req_duration) {
-        const v = summary.http_req_duration.values || {};
-        minDuration = v.min || 0;
-        avgDuration = v.avg || 0;
-        maxDuration = v.max || 0;
-        medianDuration = v.med || 0;
-        p90Duration = v['p(90)'] || 0;
-        p95Duration = v['p(95)'] || 0;
-        p99Duration = v['p(99)'] || 0;
-    }
-    
-    if (summary.vus) {
-        maxVUs = summary.vus.values?.max || 0;
-    }
-    
-    if (summary.iterations) {
-        iterations = summary.iterations.values?.count || 0;
+    if (summary) {
+        if (summary.http_reqs) {
+            totalRequests = summary.http_reqs.values?.count || 0;
+        }
+        if (summary.http_req_failed) {
+            const failedRate = summary.http_req_failed.values?.rate || 0;
+            failedRequests = Math.round(totalRequests * failedRate);
+        }
+        if (summary.http_req_duration) {
+            avgDuration = summary.http_req_duration.values?.avg || 0;
+            p95Duration = summary.http_req_duration.values?.['p(95)'] || 0;
+            p99Duration = summary.http_req_duration.values?.['p(99)'] || 0;
+        }
     }
     
     const successRate = totalRequests > 0 
         ? ((totalRequests - failedRequests) / totalRequests * 100).toFixed(2)
         : 0;
     
-    const successRateClass = successRate >= 95 ? 'success' : successRate >= 80 ? 'warning' : 'danger';
-    const failedClass = failedRequests === 0 ? 'success' : 'danger';
-    
-    // Build detailed metrics table
-    let metricsTable = '';
-    if (Object.keys(summary).length > 0) {
-        metricsTable = `
-        <div class="details-section">
-            <h2>📊 Detailed Metrics</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Count/Rate</th>
-                        <th>Min</th>
-                        <th>Avg</th>
-                        <th>Med</th>
-                        <th>Max</th>
-                        <th>P(90)</th>
-                        <th>P(95)</th>
-                        <th>P(99)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${Object.entries(summary).map(([metric, data]) => {
-                        if (!data.values) return '';
-                        const v = data.values;
-                        return `
-                        <tr>
-                            <td><strong>${metric}</strong></td>
-                            <td>${formatValue(v.count || v.rate)}</td>
-                            <td>${formatValue(v.min)}</td>
-                            <td>${formatValue(v.avg)}</td>
-                            <td>${formatValue(v.med)}</td>
-                            <td>${formatValue(v.max)}</td>
-                            <td>${formatValue(v['p(90)'])}</td>
-                            <td>${formatValue(v['p(95)'])}</td>
-                            <td>${formatValue(v['p(99)'])}</td>
-                        </tr>
-                        `;
-                    }).filter(Boolean).join('')}
-                </tbody>
-            </table>
-        </div>
-        `;
-    } else {
-        metricsTable = '<div class="details-section"><p>No detailed metrics available</p></div>';
-    }
-    
-    return `<!DOCTYPE html>
+    return `
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -242,7 +190,7 @@ function generateHtmlReport(summary, metrics, testName) {
             color: #333;
             padding: 20px;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -256,7 +204,7 @@ function generateHtmlReport(summary, metrics, testName) {
         
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -269,18 +217,18 @@ function generateHtmlReport(summary, metrics, testName) {
         }
         .metric-card h3 {
             color: #666;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 10px;
         }
         .metric-value {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #333;
         }
         .metric-unit {
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: #999;
             margin-left: 5px;
         }
@@ -295,7 +243,6 @@ function generateHtmlReport(summary, metrics, testName) {
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 30px;
-            overflow-x: auto;
         }
         .details-section h2 {
             color: #667eea;
@@ -307,10 +254,9 @@ function generateHtmlReport(summary, metrics, testName) {
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
         }
         th, td {
-            padding: 12px 8px;
+            padding: 12px;
             text-align: left;
             border-bottom: 1px solid #f0f0f0;
         }
@@ -318,8 +264,6 @@ function generateHtmlReport(summary, metrics, testName) {
             background: #f8f9fa;
             font-weight: 600;
             color: #666;
-            position: sticky;
-            top: 0;
         }
         tr:hover {
             background: #f8f9fa;
@@ -332,17 +276,6 @@ function generateHtmlReport(summary, metrics, testName) {
             padding-top: 20px;
             border-top: 1px solid #e0e0e0;
         }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .badge.success { background: #d4edda; color: #155724; }
-        .badge.warning { background: #fff3cd; color: #856404; }
-        .badge.danger { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -351,9 +284,6 @@ function generateHtmlReport(summary, metrics, testName) {
             <h1>🚀 k6 Performance Test Report</h1>
             <p>${testName}</p>
             <p style="font-size: 0.9rem; margin-top: 10px;">Generated: ${new Date().toISOString()}</p>
-            <p style="font-size: 0.85rem; margin-top: 5px; opacity: 0.8;">
-                Test Status: <span class="badge ${successRateClass}">${successRate}% Success Rate</span>
-            </p>
         </div>
         
         <div class="metrics-grid">
@@ -364,69 +294,71 @@ function generateHtmlReport(summary, metrics, testName) {
             
             <div class="metric-card">
                 <h3>Success Rate</h3>
-                <div class="metric-value ${successRateClass}">
+                <div class="metric-value ${successRate >= 95 ? 'success' : successRate >= 80 ? 'warning' : 'danger'}">
                     ${successRate}<span class="metric-unit">%</span>
                 </div>
             </div>
             
             <div class="metric-card">
                 <h3>Failed Requests</h3>
-                <div class="metric-value ${failedClass}">
+                <div class="metric-value ${failedRequests === 0 ? 'success' : 'danger'}">
                     ${failedRequests.toLocaleString()}
                 </div>
             </div>
             
             <div class="metric-card">
-                <h3>Min Response</h3>
-                <div class="metric-value">${minDuration.toFixed(2)}<span class="metric-unit">ms</span></div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>Avg Response</h3>
+                <h3>Avg Response Time</h3>
                 <div class="metric-value">${avgDuration.toFixed(2)}<span class="metric-unit">ms</span></div>
             </div>
             
             <div class="metric-card">
-                <h3>Median Response</h3>
-                <div class="metric-value">${medianDuration.toFixed(2)}<span class="metric-unit">ms</span></div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>P90 Response</h3>
-                <div class="metric-value">${p90Duration.toFixed(2)}<span class="metric-unit">ms</span></div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>P95 Response</h3>
+                <h3>P95 Response Time</h3>
                 <div class="metric-value">${p95Duration.toFixed(2)}<span class="metric-unit">ms</span></div>
             </div>
             
             <div class="metric-card">
-                <h3>P99 Response</h3>
+                <h3>P99 Response Time</h3>
                 <div class="metric-value">${p99Duration.toFixed(2)}<span class="metric-unit">ms</span></div>
             </div>
-            
-            <div class="metric-card">
-                <h3>Max Response</h3>
-                <div class="metric-value">${maxDuration.toFixed(2)}<span class="metric-unit">ms</span></div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>Max VUs</h3>
-                <div class="metric-value">${Math.round(maxVUs)}</div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>Iterations</h3>
-                <div class="metric-value">${iterations.toLocaleString()}</div>
-            </div>
         </div>
         
-        ${metricsTable}
+        ${summary ? `
+        <div class="details-section">
+            <h2>📊 Detailed Metrics</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Min</th>
+                        <th>Avg</th>
+                        <th>Max</th>
+                        <th>P(90)</th>
+                        <th>P(95)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(summary).map(([metric, data]) => {
+                        if (!data.values) return '';
+                        const v = data.values;
+                        return `
+                        <tr>
+                            <td><strong>${metric}</strong></td>
+                            <td>${formatValue(v.min)}</td>
+                            <td>${formatValue(v.avg)}</td>
+                            <td>${formatValue(v.max)}</td>
+                            <td>${formatValue(v['p(90)'])}</td>
+                            <td>${formatValue(v['p(95)'])}</td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+        ` : '<div class="details-section"><p>No detailed metrics available</p></div>'}
         
         <div class="footer">
-            <p>Generated by k6 JSON to HTML converter | BBC Senior Tester Take-home Test</p>
-            <p style="margin-top: 5px; font-size: 0.85rem;">Test Type: ${testName}</p>
+            <p>Generated by k6 JSON to HTML converter</p>
+            <p>Test file: ${filename}</p>
         </div>
     </div>
 </body>
@@ -434,67 +366,19 @@ function generateHtmlReport(summary, metrics, testName) {
 `;
 }
 
-function generatePlaceholderReport(testName, reason) {
-    return `<!DOCTYPE html>
+function generateFallbackReport(inputFile, error) {
+    return `
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>k6 Test Report - ${testName}</title>
+    <title>k6 Test Report - Error</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 40px;
             background: #f5f7fa;
-            padding: 40px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h1 { color: #667eea; margin-bottom: 20px; }
-        .icon { font-size: 4rem; margin: 20px 0; }
-        .message { color: #666; font-size: 1.1rem; margin: 20px 0; }
-        .reason { background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0; color: #856404; }
-        .timestamp { color: #999; font-size: 0.9rem; margin-top: 30px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>${testName}</h1>
-        <div class="icon">⏳</div>
-        <div class="message">Test data is being generated...</div>
-        <div class="reason">
-            <strong>Status:</strong> ${reason}
-        </div>
-        <p style="color: #666; margin-top: 20px;">
-            This report will be updated automatically when test data becomes available.
-        </p>
-        <div class="timestamp">Generated: ${new Date().toISOString()}</div>
-    </div>
-</body>
-</html>
-`;
-}
-
-function generateFallbackReport(testName, error) {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>k6 Test Report - ${testName}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f5f7fa;
-            padding: 40px;
         }
         .container {
             max-width: 800px;
@@ -504,25 +388,20 @@ function generateFallbackReport(testName, error) {
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        h1 { color: #dc3545; margin-bottom: 20px; }
-        .error { background: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; color: #721c24; }
+        h1 { color: #dc3545; }
+        .error { background: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; }
         code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
-        .timestamp { color: #999; font-size: 0.9rem; margin-top: 30px; text-align: center; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⚠️ Report Generation Issue</h1>
-        <p>Unable to generate the k6 test report from the JSON output.</p>
+        <h1>⚠️ Report Generation Error</h1>
+        <p>Unable to generate the k6 test report from the JSON file.</p>
         <div class="error">
-            <strong>Error:</strong> ${error.message || 'Unknown error'}
+            <strong>Error:</strong> ${error.message}
         </div>
-        <p><strong>Test Type:</strong> <code>${testName}</code></p>
-        <p style="margin-top: 20px; color: #666;">
-            The test may have generated results in an unexpected format or encountered an error during execution.
-            Please check the GitHub Actions logs for more details.
-        </p>
-        <div class="timestamp">Generated: ${new Date().toISOString()}</div>
+        <p><strong>Input file:</strong> <code>${inputFile}</code></p>
+        <p>The test may have generated results that are too large or in an unexpected format.</p>
     </div>
 </body>
 </html>
@@ -534,5 +413,5 @@ function formatValue(value) {
     if (typeof value === 'number') {
         return value < 1 ? value.toFixed(4) : value.toFixed(2);
     }
-    return value.toString();
+    return value;
 }
