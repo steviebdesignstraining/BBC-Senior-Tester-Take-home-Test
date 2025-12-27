@@ -1,67 +1,21 @@
-# BBC Senior/Principle Test Engineer Technical Task
+# Stephen Bennett BBC Senior/Principle Test Engineer Technical Task
+## 👋 Introduction
+
+![Stephen_.png](https://github.com/steviebdesignstraining/waracle_takehome_Test/raw/main/Stephen_.png)
+
+Hi there\! Before we blast off into the code-verse, I want to introduce myself. My name is **Stephen Bennett**, and I've been immersed in the world of testing for over **12 years**. I genuinely enjoy the development space and bringing a positive, optimistic, and adaptable spirit to any team. I'm sociable and thrive in diverse environments, working well with all personalities.
+
+First off, I absolutely **loved** completing this take-home test\! I got a bit carried away and ended up building **two** automation frameworks: one with **Playwright** and another with **k6 performance automation tool**. I have created a comprehensive manual test plan that can be found https://www.notion.so/BBC-Senior-Tester-Take-home-Test-2d240221abc080f0b701ef31f7a77366?source=copy_link to guide my scripting.
+
+Let's dive into what I've accomplished\!
+
+-----
 
 ## Purpose
 
 This repository contains the technical assessment for the BBC Senior/Principle Test Engineer position. The task involves testing a new Pet Shop API that provides standard CRUD operations. The assessment evaluates approach to test planning, automated testing implementation, and documentation skills.
 
 The API under test is the Swagger Petstore API, which can be found at: https://petstore.swagger.io/
-
-## Test Plan
-
-### Functional Testing
-- **API Authentication & Authorization**
-  - Verify API key authentication mechanisms
-  - Test unauthorized access scenarios
-  - Validate proper error responses for invalid credentials
-
-- **Pet Operations (CRUD)**
-  - Create new pets with valid data
-  - Retrieve pets by ID
-  - Update existing pet information
-  - Delete pets from the system
-  - Handle edge cases (duplicate IDs, invalid data formats)
-
-- **Store Operations**
-  - Place and retrieve orders
-  - Verify inventory management
-  - Test order status updates
-  - Handle order cancellation scenarios
-
-- **User Management**
-  - Create, retrieve, and update user accounts
-  - Test user login/logout functionality
-  - Validate user data integrity
-
-### Non-Functional Testing
-- **Performance Testing**
-  - Load testing for concurrent API requests
-  - Stress testing to identify breaking points
-  - Response time validation under various loads
-
-- **Security Testing**
-  - Input validation and sanitization
-  - SQL injection prevention
-  - Cross-site scripting (XSS) protection
-  - Authentication bypass attempts
-
-- **Integration Testing**
-  - End-to-end workflow validation
-  - Data consistency across operations
-  - Error handling and recovery scenarios
-
-## Automated Test Scenarios
-
-| Test Description | Steps | Behaviour | Cucumber Scenario | Expected Result | Body/Header Variables/Credentials | Body Response |
-|------------------|-------|-----------|-------------------|-----------------|-----------------------------------|---------------|
-| **Pet Creation** | 1. Send POST request to /pet endpoint with valid pet data<br>2. Verify response status and content | API should create new pet record | **Scenario:** Create new pet successfully<br>**Given:** Valid pet data is provided<br>**When:** POST request is sent to /pet endpoint<br>**Then:** Pet is created with unique ID<br>**And:** Response contains pet details | HTTP 200 OK with pet object containing ID, name, category, and status | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available" } | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available", "message": "12345" } |
-| **Pet Retrieval** | 1. Send GET request to /pet/{petId} with existing pet ID<br>2. Verify response contains correct pet data | API should return pet details for valid ID | **Scenario:** Retrieve existing pet<br>**Given:** Pet exists in system with ID 12345<br>**When:** GET request is sent to /pet/12345<br>**Then:** Pet details are returned successfully | HTTP 200 OK with complete pet object | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 12345 | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available" } |
-| **Pet Update** | 1. Send PUT request to /pet endpoint with updated pet data<br>2. Verify pet information is modified | API should update existing pet record | **Scenario:** Update pet information<br>**Given:** Pet exists with ID 12345<br>**When:** PUT request is sent with updated pet data<br>**Then:** Pet information is updated successfully | HTTP 200 OK with updated pet object | **Headers:** Content-Type: application/json<br>**Body:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy Updated", "photoUrls": ["url1", "url2"], "tags": [{"id": 0, "name": "friendly"}, {"id": 1, "name": "trained"}], "status": "sold" } | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy Updated", "photoUrls": ["url1", "url2"], "tags": [{"id": 0, "name": "friendly"}, {"id": 1, "name": "trained"}], "status": "sold", "message": "12345" } |
-| **Pet Deletion** | 1. Send DELETE request to /pet/{petId} with existing pet ID<br>2. Verify pet is removed from system | API should delete pet record | **Scenario:** Delete existing pet<br>**Given:** Pet exists with ID 12345<br>**When:** DELETE request is sent to /pet/12345<br>**Then:** Pet is removed from system | HTTP 200 OK with success message | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 12345 | **Response:** { "code": 200, "type": "unknown", "message": "12345" } |
-| **Order Placement** | 1. Send POST request to /store/order with valid order data<br>2. Verify order is created | API should create new order | **Scenario:** Place new order<br>**Given:** Valid order data is provided<br>**When:** POST request is sent to /store/order<br>**Then:** Order is created with unique ID | HTTP 200 OK with order details | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "petId": 12345, "quantity": 1, "shipDate": "2023-12-01T10:00:00Z", "status": "placed", "complete": false } | **Response:** { "id": 67890, "petId": 12345, "quantity": 1, "shipDate": "2023-12-01T10:00:00Z", "status": "placed", "complete": false } |
-| **User Registration** | 1. Send POST request to /user with valid user data<br>2. Verify user account is created | API should create new user account | **Scenario:** Register new user<br>**Given:** Valid user registration data is provided<br>**When:** POST request is sent to /user<br>**Then:** User account is created successfully | HTTP 200 OK with success message | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "username": "testuser", "firstName": "Test", "lastName": "User", "email": "test@example.com", "password": "password123", "phone": "1234567890", "userStatus": 0 } | **Response:** { "code": 200, "type": "unknown", "message": "0" } |
-| **User Login** | 1. Send GET request to /user/login with valid credentials<br>2. Verify successful authentication | API should authenticate user and return session token | **Scenario:** User login with valid credentials<br>**Given:** User account exists with username and password<br>**When:** GET request is sent to /user/login with credentials<br>**Then:** User is authenticated successfully | HTTP 200 OK with session information | **Headers:** Content-Type: application/json<br>**Query Parameters:** username=testuser, password=password123 | **Response:** { "code": 200, "type": "unknown", "message": "logged in user session:12345" } |
-| **Invalid Data Handling** | 1. Send request with malformed or invalid data<br>2. Verify appropriate error response | API should reject invalid data with proper error messages | **Scenario:** Handle invalid pet data<br>**Given:** Invalid pet data is provided (missing required fields)<br>**When:** POST request is sent to /pet endpoint<br>**Then:** Request is rejected with error message | HTTP 400 Bad Request with error details | **Headers:** Content-Type: application/json<br>**Body:** { "name": "Buddy" } (missing required fields) | **Response:** { "code": 400, "type": "unknown", "message": "Invalid input" } |
-| **Non-existent Resource Access** | 1. Send request for non-existent resource ID<br>2. Verify appropriate error response | API should return 404 for non-existent resources | **Scenario:** Access non-existent pet<br>**Given:** Pet ID does not exist in system<br>**When:** GET request is sent to /pet/99999<br>**Then:** Resource not found error is returned | HTTP 404 Not Found with error message | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 99999 | **Response:** { "code": 1, "type": "error", "message": "Pet not found" } |
 
 ## Setup and Execution Instructions
 
@@ -75,7 +29,7 @@ The API under test is the Swagger Petstore API, which can be found at: https://p
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test
    cd BBC-Senior-Tester-Take-home-Test
    ```
 
@@ -230,6 +184,63 @@ BBC-Senior-Tester-Take-home-Test/
 3. **Dependency Installation Issues:**
    - Clear npm cache: `npm cache clean --force`
    - Reinstall dependencies: `rm -rf node_modules package-lock.json && npm install`
+
+## Test Plan
+
+### Functional Testing
+- **API Authentication & Authorization**
+  - Verify API key authentication mechanisms
+  - Test unauthorized access scenarios
+  - Validate proper error responses for invalid credentials
+
+- **Pet Operations (CRUD)**
+  - Create new pets with valid data
+  - Retrieve pets by ID
+  - Update existing pet information
+  - Delete pets from the system
+  - Handle edge cases (duplicate IDs, invalid data formats)
+
+- **Store Operations**
+  - Place and retrieve orders
+  - Verify inventory management
+  - Test order status updates
+  - Handle order cancellation scenarios
+
+- **User Management**
+  - Create, retrieve, and update user accounts
+  - Test user login/logout functionality
+  - Validate user data integrity
+
+### Non-Functional Testing
+- **Performance Testing**
+  - Load testing for concurrent API requests
+  - Stress testing to identify breaking points
+  - Response time validation under various loads
+
+- **Security Testing**
+  - Input validation and sanitization
+  - SQL injection prevention
+  - Cross-site scripting (XSS) protection
+  - Authentication bypass attempts
+
+- **Integration Testing**
+  - End-to-end workflow validation
+  - Data consistency across operations
+  - Error handling and recovery scenarios
+
+## Automated Test Scenarios
+
+| Test Description | Steps | Behaviour | Cucumber Scenario | Expected Result | Body/Header Variables/Credentials | Body Response |
+|------------------|-------|-----------|-------------------|-----------------|-----------------------------------|---------------|
+| **Pet Creation** | 1. Send POST request to /pet endpoint with valid pet data<br>2. Verify response status and content | API should create new pet record | **Scenario:** Create new pet successfully<br>**Given:** Valid pet data is provided<br>**When:** POST request is sent to /pet endpoint<br>**Then:** Pet is created with unique ID<br>**And:** Response contains pet details | HTTP 200 OK with pet object containing ID, name, category, and status | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available" } | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available", "message": "12345" } |
+| **Pet Retrieval** | 1. Send GET request to /pet/{petId} with existing pet ID<br>2. Verify response contains correct pet data | API should return pet details for valid ID | **Scenario:** Retrieve existing pet<br>**Given:** Pet exists in system with ID 12345<br>**When:** GET request is sent to /pet/12345<br>**Then:** Pet details are returned successfully | HTTP 200 OK with complete pet object | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 12345 | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy", "photoUrls": ["url1"], "tags": [{"id": 0, "name": "friendly"}], "status": "available" } |
+| **Pet Update** | 1. Send PUT request to /pet endpoint with updated pet data<br>2. Verify pet information is modified | API should update existing pet record | **Scenario:** Update pet information<br>**Given:** Pet exists with ID 12345<br>**When:** PUT request is sent with updated pet data<br>**Then:** Pet information is updated successfully | HTTP 200 OK with updated pet object | **Headers:** Content-Type: application/json<br>**Body:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy Updated", "photoUrls": ["url1", "url2"], "tags": [{"id": 0, "name": "friendly"}, {"id": 1, "name": "trained"}], "status": "sold" } | **Response:** { "id": 12345, "category": {"id": 1, "name": "Dogs"}, "name": "Buddy Updated", "photoUrls": ["url1", "url2"], "tags": [{"id": 0, "name": "friendly"}, {"id": 1, "name": "trained"}], "status": "sold", "message": "12345" } |
+| **Pet Deletion** | 1. Send DELETE request to /pet/{petId} with existing pet ID<br>2. Verify pet is removed from system | API should delete pet record | **Scenario:** Delete existing pet<br>**Given:** Pet exists with ID 12345<br>**When:** DELETE request is sent to /pet/12345<br>**Then:** Pet is removed from system | HTTP 200 OK with success message | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 12345 | **Response:** { "code": 200, "type": "unknown", "message": "12345" } |
+| **Order Placement** | 1. Send POST request to /store/order with valid order data<br>2. Verify order is created | API should create new order | **Scenario:** Place new order<br>**Given:** Valid order data is provided<br>**When:** POST request is sent to /store/order<br>**Then:** Order is created with unique ID | HTTP 200 OK with order details | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "petId": 12345, "quantity": 1, "shipDate": "2023-12-01T10:00:00Z", "status": "placed", "complete": false } | **Response:** { "id": 67890, "petId": 12345, "quantity": 1, "shipDate": "2023-12-01T10:00:00Z", "status": "placed", "complete": false } |
+| **User Registration** | 1. Send POST request to /user with valid user data<br>2. Verify user account is created | API should create new user account | **Scenario:** Register new user<br>**Given:** Valid user registration data is provided<br>**When:** POST request is sent to /user<br>**Then:** User account is created successfully | HTTP 200 OK with success message | **Headers:** Content-Type: application/json<br>**Body:** { "id": 0, "username": "testuser", "firstName": "Test", "lastName": "User", "email": "test@example.com", "password": "password123", "phone": "1234567890", "userStatus": 0 } | **Response:** { "code": 200, "type": "unknown", "message": "0" } |
+| **User Login** | 1. Send GET request to /user/login with valid credentials<br>2. Verify successful authentication | API should authenticate user and return session token | **Scenario:** User login with valid credentials<br>**Given:** User account exists with username and password<br>**When:** GET request is sent to /user/login with credentials<br>**Then:** User is authenticated successfully | HTTP 200 OK with session information | **Headers:** Content-Type: application/json<br>**Query Parameters:** username=testuser, password=password123 | **Response:** { "code": 200, "type": "unknown", "message": "logged in user session:12345" } |
+| **Invalid Data Handling** | 1. Send request with malformed or invalid data<br>2. Verify appropriate error response | API should reject invalid data with proper error messages | **Scenario:** Handle invalid pet data<br>**Given:** Invalid pet data is provided (missing required fields)<br>**When:** POST request is sent to /pet endpoint<br>**Then:** Request is rejected with error message | HTTP 400 Bad Request with error details | **Headers:** Content-Type: application/json<br>**Body:** { "name": "Buddy" } (missing required fields) | **Response:** { "code": 400, "type": "unknown", "message": "Invalid input" } |
+| **Non-existent Resource Access** | 1. Send request for non-existent resource ID<br>2. Verify appropriate error response | API should return 404 for non-existent resources | **Scenario:** Access non-existent pet<br>**Given:** Pet ID does not exist in system<br>**When:** GET request is sent to /pet/99999<br>**Then:** Resource not found error is returned | HTTP 404 Not Found with error message | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 99999 | **Response:** { "code": 1, "type": "error", "message": "Pet not found" } |
 
 ### Getting Help
 
