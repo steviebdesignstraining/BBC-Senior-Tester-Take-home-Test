@@ -248,9 +248,9 @@ const dashboardTemplate = `
                         <h5 class="card-title">Load Test</h5>
                         <p class="card-text">Performance test under expected load</p>
                         <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
-                            <div>Total Requests: <span id="load-requests">0</span></div>
-                            <div>Success Rate: <span id="load-success">0%</span></div>
-                            <div>Avg Response: <span id="load-avg">0ms</span></div>
+                            <div>Total Requests: <span id="load-requests">{{LOAD_REQUESTS}}</span></div>
+                            <div>Success Rate: <span id="load-success">{{LOAD_SUCCESS}}</span></div>
+                            <div>Avg Response: <span id="load-avg">{{LOAD_AVG}}</span></div>
                         </div>
                         <a href="{{K6_LOAD}}" class="btn btn-danger mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
@@ -265,9 +265,9 @@ const dashboardTemplate = `
                         <h5 class="card-title">Stress Test</h5>
                         <p class="card-text">Performance test under extreme load</p>
                         <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
-                            <div>Total Requests: <span id="stress-requests">0</span></div>
-                            <div>Success Rate: <span id="stress-success">0%</span></div>
-                            <div>Avg Response: <span id="stress-avg">0ms</span></div>
+                            <div>Total Requests: <span id="stress-requests">{{STRESS_REQUESTS}}</span></div>
+                            <div>Success Rate: <span id="stress-success">{{STRESS_SUCCESS}}</span></div>
+                            <div>Avg Response: <span id="stress-avg">{{STRESS_AVG}}</span></div>
                         </div>
                         <a href="{{K6_STRESS}}" class="btn btn-warning mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
@@ -282,9 +282,9 @@ const dashboardTemplate = `
                         <h5 class="card-title">Security Test</h5>
                         <p class="card-text">Security-focused performance tests</p>
                         <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
-                            <div>Total Requests: <span id="security-requests">0</span></div>
-                            <div>Success Rate: <span id="security-success">0%</span></div>
-                            <div>Avg Response: <span id="security-avg">0ms</span></div>
+                            <div>Total Requests: <span id="security-requests">{{SECURITY_REQUESTS}}</span></div>
+                            <div>Success Rate: <span id="security-success">{{SECURITY_SUCCESS}}</span></div>
+                            <div>Avg Response: <span id="security-avg">{{SECURITY_AVG}}</span></div>
                         </div>
                         <a href="{{K6_SECURITY}}" class="btn btn-success mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
@@ -299,9 +299,9 @@ const dashboardTemplate = `
                         <h5 class="card-title">Performance Test</h5>
                         <p class="card-text">General performance benchmark tests</p>
                         <div class="k6-stats mt-2" style="font-size: 0.9rem; color: #666;">
-                            <div>Total Requests: <span id="performance-requests">0</span></div>
-                            <div>Success Rate: <span id="performance-success">0%</span></div>
-                            <div>Avg Response: <span id="performance-avg">0ms</span></div>
+                            <div>Total Requests: <span id="performance-requests">{{PERFORMANCE_REQUESTS}}</span></div>
+                            <div>Success Rate: <span id="performance-success">{{PERFORMANCE_SUCCESS}}</span></div>
+                            <div>Avg Response: <span id="performance-avg">{{PERFORMANCE_AVG}}</span></div>
                         </div>
                         <a href="{{K6_PERFORMANCE}}" class="btn btn-primary mt-3" target="_blank">
                             <i class="bi bi-eye"></i> View Report
@@ -491,7 +491,19 @@ async function main() {
         }
     }
 
-    // Generate dashboard
+    // Load k6 summary data if available
+    let k6Summary = null;
+    const k6SummaryFile = path.join(siteDir, 'k6-summary', 'k6-summary.json');
+    if (fs.existsSync(k6SummaryFile)) {
+        try {
+            k6Summary = JSON.parse(fs.readFileSync(k6SummaryFile, 'utf8'));
+            console.log('✅ Loaded k6 summary data');
+        } catch (error) {
+            console.warn('⚠️  Could not load k6 summary:', error.message);
+        }
+    }
+
+    // Generate dashboard with k6 data placeholders
     let dashboard = dashboardTemplate
         .replace(/\{\{LAST_RUN\}\}/g, new Date(metadata.lastRun).toLocaleString())
         .replace(/\{\{COMMIT_SHORT\}\}/g, metadata.commitShort)
@@ -512,6 +524,37 @@ async function main() {
         .replace(/\{\{PLAYWRIGHT_STATUS_CLASS\}\}/g, metadata.playwrightStatusClass)
         .replace(/\{\{K6_STATUS\}\}/g, metadata.k6Status)
         .replace(/\{\{K6_STATUS_CLASS\}\}/g, metadata.k6StatusClass);
+
+    // Replace k6 placeholders with actual data if available
+    if (k6Summary && k6Summary.tests) {
+        // Load k6 stats for each test type
+        const testTypes = ['load', 'performance', 'stress', 'security'];
+        testTypes.forEach(testType => {
+            const stats = k6Summary.tests[testType];
+            if (stats) {
+                const testKey = testType.toUpperCase();
+                dashboard = dashboard
+                    .replace(new RegExp(`\\{\\{${testKey}_REQUESTS\\}\\}`, 'g'), stats.metrics.totalRequests.toLocaleString())
+                    .replace(new RegExp(`\\{\\{${testKey}_SUCCESS\\}\\}`, 'g'), `${stats.metrics.successRate}%`)
+                    .replace(new RegExp(`\\{\\{${testKey}_AVG\\}\\}`, 'g'), `${stats.metrics.avgDuration}ms`);
+            }
+        });
+    } else {
+        // Use fallback values if no k6 data available
+        dashboard = dashboard
+            .replace(/\{\{LOAD_REQUESTS\}\}/g, '0')
+            .replace(/\{\{LOAD_SUCCESS\}\}/g, '0%')
+            .replace(/\{\{LOAD_AVG\}\}/g, '0ms')
+            .replace(/\{\{STRESS_REQUESTS\}\}/g, '0')
+            .replace(/\{\{STRESS_SUCCESS\}\}/g, '0%')
+            .replace(/\{\{STRESS_AVG\}\}/g, '0ms')
+            .replace(/\{\{SECURITY_REQUESTS\}\}/g, '0')
+            .replace(/\{\{SECURITY_SUCCESS\}\}/g, '0%')
+            .replace(/\{\{SECURITY_AVG\}\}/g, '0ms')
+            .replace(/\{\{PERFORMANCE_REQUESTS\}\}/g, '0')
+            .replace(/\{\{PERFORMANCE_SUCCESS\}\}/g, '0%')
+            .replace(/\{\{PERFORMANCE_AVG\}\}/g, '0ms');
+    }
 
     const dashboardFile = path.join(siteDir, 'index.html');
     fs.writeFileSync(dashboardFile, dashboard);

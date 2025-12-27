@@ -1,0 +1,16 @@
+{
+  "test": "stress",
+  "timestamp": "2025-12-27T17:57:00.149Z",
+  "metrics": {
+    "totalRequests": 0,
+    "failedRequests": 0,
+    "successRate": 0,
+    "avgDuration": 0,
+    "p95Duration": 0,
+    "p99Duration": 0,
+    "maxVUs": 0,
+    "totalIterations": 0
+  },
+  "summary": {},
+  "rawFile": "/Users/stephenbennett/Documents/github/BBC-Senior-Tester-Take-home-Test/k6-results/stress.json"
+}

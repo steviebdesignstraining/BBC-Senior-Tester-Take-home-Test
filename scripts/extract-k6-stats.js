@@ -119,16 +119,12 @@ function extractK6Stats(inputFile, testName) {
  */
 function generateK6Summary() {
     const k6ResultsDir = path.join(__dirname, '..', 'k6-results');
+    const k6SummaryDir = path.join(__dirname, '..', 'k6', 'results');
     const siteDir = path.join(__dirname, '..', 'site');
-    const k6SummaryDir = path.join(siteDir, 'k6-summary');
+    const k6SummaryOutputDir = path.join(siteDir, 'k6-summary');
     
-    if (!fs.existsSync(k6ResultsDir)) {
-        console.warn('⚠️  k6-results directory not found');
-        return null;
-    }
-    
-    if (!fs.existsSync(k6SummaryDir)) {
-        fs.mkdirSync(k6SummaryDir, { recursive: true });
+    if (!fs.existsSync(k6SummaryOutputDir)) {
+        fs.mkdirSync(k6SummaryOutputDir, { recursive: true });
     }
 
     const testTypes = ['load', 'performance', 'stress', 'security'];
@@ -147,8 +143,27 @@ function generateK6Summary() {
     let testCount = 0;
 
     testTypes.forEach(testType => {
-        const inputFile = path.join(k6ResultsDir, `${testType}.json`);
-        const stats = extractK6Stats(inputFile, testType);
+        // First try to extract from k6/results summary files (these have real data)
+        let stats = null;
+        const summaryFile = path.join(k6SummaryDir, `${testType}-summary.json`);
+        
+        if (fs.existsSync(summaryFile)) {
+            try {
+                const summaryData = JSON.parse(fs.readFileSync(summaryFile, 'utf8'));
+                stats = convertSummaryToStats(summaryData, testType);
+                console.log(`✅ Converted summary data for ${testType}`);
+            } catch (error) {
+                console.warn(`⚠️  Could not convert summary for ${testType}:`, error.message);
+            }
+        }
+        
+        // If no stats from summary files, try to extract from k6-results directory
+        if (!stats) {
+            const inputFile = path.join(k6ResultsDir, `${testType}.json`);
+            if (fs.existsSync(inputFile)) {
+                stats = extractK6Stats(inputFile, testType);
+            }
+        }
         
         if (stats) {
             summary.tests[testType] = stats;
@@ -184,6 +199,54 @@ function generateK6Summary() {
     console.log(`   Total Failed: ${summary.overall.totalFailed}`);
 
     return summary;
+}
+
+/**
+ * Convert k6 summary data to stats format
+ */
+function convertSummaryToStats(summaryData, testName) {
+    try {
+        const metrics = summaryData.metrics || {};
+        
+        // Extract key metrics from summary - the structure is different from what we expected
+        const httpReqDuration = metrics.http_req_duration || {};
+        const httpReqFailed = metrics.http_req_failed || {};
+        const httpReqRate = metrics.http_reqs || {}; // Note: this is http_reqs, not http_req_rate
+        const vus = metrics.vus_max || {}; // Note: this is vus_max, not vus
+        const iterations = metrics.iterations || {};
+
+        // Extract values directly from the metrics objects
+        const totalRequests = httpReqRate.count || 0;
+        const failedRequests = httpReqFailed.fails || 0;
+        const successRate = totalRequests > 0 ? ((totalRequests - failedRequests) / totalRequests * 100) : 0;
+
+        const stats = {
+            test: testName,
+            timestamp: new Date().toISOString(),
+            metrics: {
+                totalRequests,
+                failedRequests,
+                successRate: parseFloat(successRate.toFixed(2)),
+                avgDuration: parseFloat((httpReqDuration.avg || 0).toFixed(2)),
+                p95Duration: parseFloat((httpReqDuration['p(95)'] || 0).toFixed(2)), // Note: p(95) not p95
+                p99Duration: parseFloat((httpReqDuration['p(99)'] || 0).toFixed(2)), // Note: p(99) not p99
+                maxVUs: Math.round(vus.value || 0), // Note: value not max
+                totalIterations: iterations.count || 0
+            },
+            summary: summaryData,
+            rawFile: `k6/results/${testName}-summary.json`
+        };
+
+        console.log(`✅ Converted summary for ${testName}:`);
+        console.log(`   Total Requests: ${totalRequests}`);
+        console.log(`   Success Rate: ${successRate.toFixed(2)}%`);
+        console.log(`   Avg Duration: ${httpReqDuration.avg || 0}ms`);
+
+        return stats;
+    } catch (error) {
+        console.error(`❌ Error converting summary for ${testName}:`, error.message);
+        return null;
+    }
 }
 
 /**

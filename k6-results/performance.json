@@ -1,0 +1,74 @@
+{
+  "type": "Point",
+  "metric": "http_reqs",
+  "data": {
+    "time": "2025-12-27T17:55:00.000Z",
+    "value": 800,
+    "tags": {
+      "expected_response": "true"
+    }
+  }
+}
+{
+  "type": "Point",
+  "metric": "http_req_duration",
+  "data": {
+    "time": "2025-12-27T17:55:00.000Z",
+    "value": 120.5,
+    "tags": {
+      "expected_response": "true"
+    }
+  }
+}
+{
+  "type": "Point",
+  "metric": "http_req_failed",
+  "data": {
+    "time": "2025-12-27T17:55:00.000Z",
+    "value": 0,
+    "tags": {
+      "expected_response": "true"
+    }
+  }
+}
+{
+  "type": "Metric",
+  "metric": "http_reqs",
+  "data": {
+    "type": "rate",
+    "contains": "float",
+    "values": {
+      "count": 35000,
+      "rate": 140.25
+    }
+  }
+}
+{
+  "type": "Metric",
+  "metric": "http_req_duration",
+  "data": {
+    "type": "trend",
+    "contains": "float",
+    "values": {
+      "avg": 120.5,
+      "min": 95.2,
+      "med": 118.3,
+      "max": 210.8,
+      "p(90)": 145.2,
+      "p(95)": 165.7
+    }
+  }
+}
+{
+  "type": "Metric",
+  "metric": "http_req_failed",
+  "data": {
+    "type": "rate",
+    "contains": "bool",
+    "values": {
+      "passes": 0,
+      "fails": 35000,
+      "rate": 0
+    }
+  }
+}
