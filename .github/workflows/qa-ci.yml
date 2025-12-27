@@ -189,7 +189,7 @@ jobs:
 
     strategy:
       matrix:
-        test: [load, performance, stress, security]
+        test: [load, performance, stress, security, fallback]
 
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
