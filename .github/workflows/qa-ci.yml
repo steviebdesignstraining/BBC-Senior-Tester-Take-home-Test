@@ -63,10 +63,14 @@ jobs:
 
       - name: Update index.html
         run: |
-          echo "🔍 Checking script path..."
-          ls -la scripts/
-          echo "🔧 Running update-index.js script..."
-          node scripts/update-index.js
+          echo "🔍 Checking for update-index.js script..."
+          if [ -f "scripts/update-index.js" ]; then
+            echo "✅ Script found, running update-index.js..."
+            node scripts/update-index.js
+          else
+            echo "❌ Script not found. Using fallback script..."
+            node scripts/create-fallback-index.js
+          fi
 
       - name: Upload Playwright reports artifact
         uses: actions/upload-artifact@v4
@@ -117,10 +121,14 @@ jobs:
 
       - name: Update index.html
         run: |
-          echo "🔍 Checking script path..."
-          ls -la scripts/
-          echo "🔧 Running update-index.js script..."
-          node scripts/update-index.js
+          echo "🔍 Checking for update-index.js script..."
+          if [ -f "scripts/update-index.js" ]; then
+            echo "✅ Script found, running update-index.js..."
+            node scripts/update-index.js
+          else
+            echo "❌ Script not found. Using fallback script..."
+            node scripts/create-fallback-index.js
+          fi
 
       - name: Upload k6 reports artifact
         uses: actions/upload-artifact@v4
@@ -184,11 +192,14 @@ jobs:
 
       - name: Update index.html with GitHub Actions metadata
         run: |
-          echo "🔍 Checking script path..."
-          ls -la scripts/
-          echo "📂 Current working directory: $(pwd)"
-          echo "🔧 Running update-index.js script..."
-          node scripts/update-index.js
+          echo "🔍 Checking for update-index.js script..."
+          if [ -f "scripts/update-index.js" ]; then
+            echo "✅ Script found, running update-index.js..."
+            node scripts/update-index.js
+          else
+            echo "❌ Script not found. Using fallback script..."
+            node scripts/create-fallback-index.js
+          fi
 
       - name: Deploy to GitHub Pages
         id: deployment
