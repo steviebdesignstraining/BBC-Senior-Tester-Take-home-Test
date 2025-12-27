@@ -63,6 +63,9 @@ jobs:
 
       - name: Update index.html
         run: |
+          echo "🔍 Checking script path..."
+          ls -la ${{ github.workspace }}/scripts/
+          echo "🔧 Running update-index.js script..."
           node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Upload Playwright reports artifact
@@ -114,6 +117,9 @@ jobs:
 
       - name: Update index.html
         run: |
+          echo "🔍 Checking script path..."
+          ls -la ${{ github.workspace }}/scripts/
+          echo "🔧 Running update-index.js script..."
           node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Upload k6 reports artifact
@@ -178,6 +184,11 @@ jobs:
 
       - name: Update index.html with GitHub Actions metadata
         run: |
+          echo "🔍 Checking script path..."
+          ls -la ${{ github.workspace }}/scripts/
+          echo "📂 Current working directory: $(pwd)"
+          echo "📁 GitHub workspace: ${{ github.workspace }}"
+          echo "🔧 Running update-index.js script..."
           node ${{ github.workspace }}/scripts/update-index.js
 
       - name: Deploy to GitHub Pages
