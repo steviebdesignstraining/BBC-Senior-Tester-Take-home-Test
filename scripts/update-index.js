@@ -21,6 +21,15 @@ const dashboardTemplate = `
             --border-color: #dee2e6;
         }
         
+        /* Bootstrap Icons */
+        .bi {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: -.125em;
+            fill: currentColor;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
@@ -79,6 +88,50 @@ const dashboardTemplate = `
             height: 12px;
             border-radius: 50%;
             background-color: var(--success-color);
+        }
+        
+        .status-dot.failed {
+            background-color: var(--danger-color);
+        }
+        
+        .status-dot.warning {
+            background-color: var(--warning-color);
+        }
+        
+        .test-status {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+        }
+        
+        .status-badge.passed {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        
+        .status-badge.failed {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        
+        .status-badge.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
         }
         
         .pipeline-info {
@@ -204,9 +257,17 @@ const dashboardTemplate = `
     <div class="container">
         <div class="status-bar">
             <div class="status-item">
-                <div class="status-dot"></div>
+                <div class="status-dot {{PIPELINE_STATUS_CLASS}}"></div>
                 <div>
-                    <span style="font-weight: 700; font-size: 1.1rem;">Tests Running</span>
+                    <span style="font-weight: 700; font-size: 1.1rem;">{{PIPELINE_STATUS_TEXT}}</span>
+                    <div class="test-status">
+                        <span class="status-badge {{PLAYWRIGHT_STATUS_CLASS}}">
+                            🐛 Playwright: {{PLAYWRIGHT_STATUS}}
+                        </span>
+                        <span class="status-badge {{K6_STATUS_CLASS}}">
+                            ⚡ k6 Tests: {{K6_STATUS}}
+                        </span>
+                    </div>
                     <div class="pipeline-info">
                         <span><strong>Workflow:</strong> {{WORKFLOW_NAME}}</span>
                         <span><strong>Branch:</strong> {{BRANCH}}</span>
@@ -323,6 +384,25 @@ function main() {
     const branch = process.env.GITHUB_REF ? process.env.GITHUB_REF.replace('refs/heads/', '') :
                    process.env.GITHUB_REF_NAME || 'unknown';
 
+    // Determine test statuses from environment variables
+    const playwrightStatus = process.env.PLAYWRIGHT_STATUS || 'RUNNING';
+    const k6Status = process.env.K6_STATUS || 'RUNNING';
+    
+    // Calculate overall pipeline status
+    let pipelineStatus = 'RUNNING';
+    let pipelineStatusClass = '';
+    
+    if (playwrightStatus === 'FAILED' || k6Status === 'FAILED') {
+        pipelineStatus = 'FAILED';
+        pipelineStatusClass = 'failed';
+    } else if (playwrightStatus === 'PASSED' && k6Status === 'PASSED') {
+        pipelineStatus = 'PASSED';
+        pipelineStatusClass = 'passed';
+    } else {
+        pipelineStatus = 'RUNNING';
+        pipelineStatusClass = 'warning';
+    }
+
     // Read metadata or create default
     let metadata = {
         lastRun: process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString(),
@@ -339,7 +419,14 @@ function main() {
             performance: 'k6/performance/index.html',
             stress: 'k6/stress/index.html',
             security: 'k6/security/index.html'
-        }
+        },
+        // Test status information
+        playwrightStatus: playwrightStatus,
+        k6Status: k6Status,
+        pipelineStatus: pipelineStatus,
+        pipelineStatusClass: pipelineStatusClass,
+        playwrightStatusClass: playwrightStatus === 'FAILED' ? 'failed' : (playwrightStatus === 'PASSED' ? 'passed' : 'warning'),
+        k6StatusClass: k6Status === 'FAILED' ? 'failed' : (k6Status === 'PASSED' ? 'passed' : 'warning')
     };
 
     // Only load existing metadata if we're in a GitHub Actions environment
@@ -372,7 +459,13 @@ function main() {
         .replace('{{K6_STRESS}}', metadata.k6.stress)
         .replace('{{K6_SECURITY}}', metadata.k6.security)
         .replace('{{TIMESTAMP}}', new Date().toISOString())
-        .replace('{{ENVIRONMENT}}', process.env.BASE_URL || 'Unknown');
+        .replace('{{ENVIRONMENT}}', process.env.BASE_URL || 'Unknown')
+        .replace('{{PIPELINE_STATUS_TEXT}}', metadata.pipelineStatus)
+        .replace('{{PIPELINE_STATUS_CLASS}}', metadata.pipelineStatusClass)
+        .replace('{{PLAYWRIGHT_STATUS}}', metadata.playwrightStatus)
+        .replace('{{PLAYWRIGHT_STATUS_CLASS}}', metadata.playwrightStatusClass)
+        .replace('{{K6_STATUS}}', metadata.k6Status)
+        .replace('{{K6_STATUS_CLASS}}', metadata.k6StatusClass);
 
     const dashboardFile = path.join(siteDir, 'index.html');
     fs.writeFileSync(dashboardFile, dashboard);
