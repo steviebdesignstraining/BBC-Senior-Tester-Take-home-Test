@@ -550,6 +550,80 @@ jobs:
             exit 1
           fi
 
+      - name: Generate final dashboard
+        env:
+          PLAYWRIGHT_STATUS: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}
+          K6_STATUS: ${{ needs.k6.outputs.k6_status || 'UNKNOWN' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🎨 Generating final dashboard..."
+          echo ""
+          echo "📍 Working directory: $(pwd)"
+          echo ""
+          echo "🔧 Environment:"
+          echo "  PLAYWRIGHT_STATUS: ${PLAYWRIGHT_STATUS}"
+          echo "  K6_STATUS: ${K6_STATUS}"
+          echo "  GITHUB_SHA: ${GITHUB_SHA}"
+          echo "  GITHUB_REF: ${GITHUB_REF}"
+          echo "  GITHUB_RUN_NUMBER: ${GITHUB_RUN_NUMBER}"
+          echo "  GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
+          echo ""
+          
+          # Verify scripts exist
+          if [ ! -f "scripts/update-index.js" ]; then
+            echo "❌ ERROR: scripts/update-index.js not found!"
+            echo "Available scripts:"
+            ls -la scripts/
+            exit 1
+          fi
+          
+          if [ ! -f "scripts/fetch-github-data.js" ]; then
+            echo "❌ ERROR: scripts/fetch-github-data.js not found!"
+            exit 1
+          fi
+          
+          if [ ! -f "scripts/extract-k6-stats.js" ]; then
+            echo "❌ ERROR: scripts/extract-k6-stats.js not found!"
+            exit 1
+          fi
+          
+          # Verify k6 summary files exist after artifact download
+          echo "🔍 Checking for k6 summary files..."
+          if [ -f "site/k6-summary/k6-summary.json" ]; then
+            echo "✅ Found k6 summary file"
+            echo "📊 K6 summary size: $(stat -c%s site/k6-summary/k6-summary.json 2>/dev/null || stat -f%z site/k6-summary/k6-summary.json) bytes"
+          else
+            echo "⚠️  No k6 summary file found - will use fallback values"
+          fi
+          
+          echo "✅ Running GitHub data fetcher..."
+          node scripts/fetch-github-data.js
+          
+          echo ""
+          echo "✅ Running k6 stats extractor..."
+          node scripts/extract-k6-stats.js
+          
+          echo ""
+          echo "✅ Running dashboard generator..."
+          node scripts/update-index.js
+          
+          if [ $? -eq 0 ]; then
+            echo ""
+            echo "✅ Dashboard generated successfully!"
+            echo ""
+            if [ -f "site/index.html" ]; then
+              echo "📄 index.html size: $(wc -c < site/index.html) bytes"
+              echo ""
+              echo "📄 Dashboard preview (first 40 lines):"
+              head -40 site/index.html
+            fi
+          else
+            echo ""
+            echo "❌ Dashboard generation failed!"
+            exit 1
+          fi
+
       - name: Verify deployment files
         run: |
           echo "🔍 Verifying deployment files..."
