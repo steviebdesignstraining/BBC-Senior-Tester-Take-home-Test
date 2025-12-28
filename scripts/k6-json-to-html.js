@@ -21,15 +21,45 @@ if (!fs.existsSync(inputFile)) {
   process.exit(1);
 }
 
-const data = JSON.parse(fs.readFileSync(inputFile, "utf8"));
+// Read and parse k6 JSON file (which contains multiple JSON objects, one per line)
+const fileContent = fs.readFileSync(inputFile, "utf8");
+const lines = fileContent.trim().split('\n');
 
-const metrics = data.metrics || {};
-const checks = metrics.checks?.values || {};
-const httpReqDuration = metrics.http_req_duration?.values || {};
-const httpReqFailed = metrics.http_req_failed?.values || {};
-const httpReqRate = metrics.http_req_rate?.values || {};
-const vus = metrics.vus?.values || {};
-const iterations = metrics.iterations?.values || {};
+let metrics = {};
+let summary = {};
+
+// Parse each line as separate JSON
+lines.forEach((line, index) => {
+  if (!line.trim()) return;
+  
+  try {
+    const data = JSON.parse(line);
+    
+    // Capture summary data
+    if (data.type === 'Metric' && data.data && data.data.type === 'summary') {
+      if (!summary) summary = {};
+      summary[data.metric] = data.data;
+    }
+    
+    // Capture point data for charts
+    if (data.type === 'Point' && data.data) {
+      const metricName = data.metric;
+      if (!metrics[metricName]) {
+        metrics[metricName] = [];
+      }
+      metrics[metricName].push(data.data);
+    }
+  } catch (err) {
+    // Skip invalid JSON lines
+  }
+});
+
+const checks = summary.checks?.values || {};
+const httpReqDuration = summary.http_req_duration?.values || {};
+const httpReqFailed = summary.http_req_failed?.values || {};
+const httpReqRate = summary.http_req_rate?.values || {};
+const vus = summary.vus?.values || {};
+const iterations = summary.iterations?.values || {};
 
 // Calculate performance thresholds
 const thresholds = {
