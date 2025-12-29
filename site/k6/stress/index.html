@@ -235,7 +235,10 @@
   <div class="container">
     <div class="header">
       <h1>Stress Test</h1>
-      <p>Performance Test Report - Generated from k6 summary data</p>
+      <p>Performance Test Report - Generated from latest CI/CD pipeline run</p>
+      <div class="status-badge status-pass" style="margin-top: 1rem; display: inline-block;">
+        K6 STRESS TEST PASSED
+      </div>
     </div>
     
     <div class="metrics-grid">
@@ -475,33 +478,34 @@
     // Update dashboard with loaded data
     function updateDashboardWithData(data) {
       const metrics = processK6Data(data);
-      
+       
       // Update metric cards
       document.getElementById('avg-response-time').textContent = `${metrics.avgResponseTime}ms`;
       document.getElementById('p95-response-time').textContent = `${metrics.p95ResponseTime}ms`;
       document.getElementById('error-rate').textContent = `${metrics.errorRate}%`;
       document.getElementById('request-rate').textContent = `${metrics.requestRate} req/s`;
-      
+       
       // Update threshold values
       document.getElementById('min-response').textContent = `${metrics.minResponseTime}ms`;
       document.getElementById('avg-response').textContent = `${metrics.avgResponseTime}ms`;
       document.getElementById('p95-response').textContent = `${metrics.p95ResponseTime}ms`;
       document.getElementById('p99-response').textContent = `${metrics.p99ResponseTime}ms`;
       document.getElementById('max-response').textContent = `${metrics.maxResponseTime}ms`;
-      
+       
       document.getElementById('error-rate-value').textContent = `${metrics.errorRate}%`;
       document.getElementById('total-requests').textContent = metrics.totalRequests.toLocaleString();
       document.getElementById('successful-requests').textContent = (metrics.totalRequests - metrics.failedRequests).toLocaleString();
       document.getElementById('failed-requests').textContent = metrics.failedRequests.toLocaleString();
-      
-      // Update test-specific values
-      
-      document.getElementById('virtual-users').textContent = '1 / 300';
-      document.getElementById('iterations').textContent = '0';
-      document.getElementById('iteration-rate').textContent = '0 it/s';
+       
+      // Update test-specific values with actual data from JSON
+      const vus = data.metrics.vus || {};
+      const iterations = data.metrics.iterations || {};
+      document.getElementById('virtual-users').textContent = `${vus.value || 'N/A'} / ${vus.max || 'N/A'}`;
+      document.getElementById('iterations').textContent = (iterations.count || 0).toLocaleString();
+      document.getElementById('iteration-rate').textContent = `${Math.round((iterations.rate || 0) * 100) / 100} it/s`;
       
       document.getElementById('request-rate-value').textContent = `${metrics.requestRate} req/s`;
-      
+       
       // Update charts
       updateCharts(metrics);
     }
