@@ -1,0 +1,45 @@
+{
+  "repo": "steviebdesignstraining/BBC-Senior-Tester-Take-home-Test",
+  "run": {
+    "id": "unknown",
+    "number": "unknown",
+    "status": "RUNNING",
+    "conclusion": null,
+    "created_at": "2025-12-29T16:22:24.789Z",
+    "updated_at": "2025-12-29T16:22:24.808Z",
+    "head_sha": "unknown",
+    "head_branch": "main",
+    "event": "push",
+    "workflow_id": "unknown",
+    "workflow_name": "QA CI Pipeline",
+    "html_url": "https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test/actions",
+    "run_attempt": 1
+  },
+  "jobs": {
+    "playwright": "RUNNING",
+    "k6": "RUNNING"
+  },
+  "k6_tests": {
+    "load": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "performance": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "stress": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "security": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    }
+  },
+  "artifacts": {
+    "k6_reports": [],
+    "total_count": 0
+  },
+  "timestamp": "2025-12-29T16:22:24.808Z"
+}

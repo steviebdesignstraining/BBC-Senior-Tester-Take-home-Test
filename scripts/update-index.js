@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { fetchGitHubData, getFallbackData } = require('./fetch-github-data');
+const { fetchGitHubPipelineData, getFallbackData: getPipelineFallbackData } = require('./fetch-github-pipeline-data');
 
 // Template for the main dashboard
 const dashboardTemplate = `<!--With the new graphs, charts and tables, the site/index.html file is updated to include the new content. -->
@@ -100,6 +101,87 @@ const dashboardTemplate = `<!--With the new graphs, charts and tables, the site/
                     <div class="d-flex align-items-center justify-content-center">
                         <i class="bi bi-circle-fill text-primary me-2"></i>
                         <span class="fw-bold">Commit: <span id="commit-hash">--</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CI/CD Pipeline Information -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-github me-2"></i>CI/CD Pipeline Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-info-circle me-2"></i>Pipeline Details</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Run Number:</strong></td>
+                                            <td id="pipeline-run-number">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Run ID:</strong></td>
+                                            <td id="pipeline-run-id">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td><span id="pipeline-status-badge" class="badge bg-warning text-dark">RUNNING</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Branch:</strong></td>
+                                            <td id="pipeline-branch">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Commit:</strong></td>
+                                            <td><a href="#" id="pipeline-commit-link" target="_blank">--</a></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Workflow:</strong></td>
+                                            <td id="pipeline-workflow">--</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-lightning me-2"></i>k6 Performance Test Results</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Load Test:</strong></td>
+                                            <td><span id="k6-load-status" class="badge bg-warning text-dark">UNKNOWN</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Performance Test:</strong></td>
+                                            <td><span id="k6-performance-status" class="badge bg-warning text-dark">UNKNOWN</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Stress Test:</strong></td>
+                                            <td><span id="k6-stress-status" class="badge bg-warning text-dark">UNKNOWN</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Security Test:</strong></td>
+                                            <td><span id="k6-security-status" class="badge bg-warning text-dark">UNKNOWN</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Artifacts:</strong></td>
+                                            <td><span id="k6-artifacts-count" class="badge bg-info">0</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <a href="{{PIPELINE_URL}}" class="btn btn-primary btn-sm" target="_blank">
+                                    <i class="bi bi-box-arrow-up-right me-2"></i>View Pipeline Run
+                                </a>
+                                <span class="text-muted ms-2">Last updated: <span id="pipeline-last-updated">--</span></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -822,6 +904,100 @@ const dashboardTemplate = `<!--With the new graphs, charts and tables, the site/
                 document.getElementById('last-run').textContent = '--';
                 document.getElementById('commit-hash').textContent = '--';
             }
+            
+            // Load pipeline data
+            await loadPipelineData();
+        }
+        
+        // Load pipeline data
+        async function loadPipelineData() {
+            try {
+                // Try to load pipeline data
+                const response = await fetch('reports/pipeline-data.json');
+                if (response.ok) {
+                    const pipelineData = await response.json();
+                    updatePipelineInfo(pipelineData);
+                } else {
+                    // Try alternative location
+                    const altResponse = await fetch('site/reports/pipeline-data.json');
+                    if (altResponse.ok) {
+                        const pipelineData = await altResponse.json();
+                        updatePipelineInfo(pipelineData);
+                    }
+                }
+            } catch (error) {
+                console.log('No pipeline data found:', error);
+                // Set default pipeline info
+                document.getElementById('pipeline-run-number').textContent = '--';
+                document.getElementById('pipeline-run-id').textContent = '--';
+                document.getElementById('pipeline-status-badge').textContent = 'UNKNOWN';
+                document.getElementById('pipeline-status-badge').className = 'badge bg-secondary';
+                document.getElementById('pipeline-branch').textContent = '--';
+                document.getElementById('pipeline-commit-link').textContent = '--';
+                document.getElementById('pipeline-workflow').textContent = '--';
+                document.getElementById('pipeline-last-updated').textContent = '--';
+                
+                // Set default k6 test statuses
+                ['load', 'performance', 'stress', 'security'].forEach(testType => {
+                    document.getElementById('k6-' + testType + '-status').textContent = 'UNKNOWN';
+                    document.getElementById('k6-' + testType + '-status').className = 'badge bg-secondary';
+                });
+                
+                document.getElementById('k6-artifacts-count').textContent = '0';
+            }
+        }
+        
+        // Update pipeline information
+        function updatePipelineInfo(data) {
+            // Update pipeline details
+            document.getElementById('pipeline-run-number').textContent = data.run.number;
+            document.getElementById('pipeline-run-id').textContent = data.run.id;
+            
+            // Update status badge
+            const statusBadge = document.getElementById('pipeline-status-badge');
+            statusBadge.textContent = data.run.status;
+            
+            if (data.run.status === 'PASSED') {
+                statusBadge.className = 'badge bg-success';
+            } else if (data.run.status === 'FAILED') {
+                statusBadge.className = 'badge bg-danger';
+            } else {
+                statusBadge.className = 'badge bg-warning text-dark';
+            }
+            
+            document.getElementById('pipeline-branch').textContent = data.run.head_branch;
+            document.getElementById('pipeline-commit-link').textContent = data.run.head_sha.substring(0, 7);
+            document.getElementById('pipeline-commit-link').href = 'https://github.com/' + data.repo + '/commit/' + data.run.head_sha;
+            document.getElementById('pipeline-workflow').textContent = data.run.workflow_name;
+            document.getElementById('pipeline-last-updated').textContent = new Date(data.timestamp).toLocaleString();
+            
+            // Update k6 test statuses
+            const testTypes = ['load', 'performance', 'stress', 'security'];
+            testTypes.forEach(testType => {
+                const testData = data.k6_tests[testType];
+                const statusElement = document.getElementById('k6-' + testType + '-status');
+                
+                if (testData && testData.conclusion) {
+                    statusElement.textContent = testData.conclusion;
+                    
+                    if (testData.conclusion === 'success') {
+                        statusElement.textContent = 'PASSED';
+                        statusElement.className = 'badge bg-success';
+                    } else if (testData.conclusion === 'failure') {
+                        statusElement.textContent = 'FAILED';
+                        statusElement.className = 'badge bg-danger';
+                    } else {
+                        statusElement.textContent = testData.conclusion.toUpperCase();
+                        statusElement.className = 'badge bg-warning text-dark';
+                    }
+                } else {
+                    statusElement.textContent = 'UNKNOWN';
+                    statusElement.className = 'badge bg-secondary';
+                }
+            });
+            
+            // Update artifacts count
+            document.getElementById('k6-artifacts-count').textContent = data.artifacts.total_count;
         }
         
         // Update GitHub Actions status indicators
@@ -896,12 +1072,21 @@ async function main() {
 
     // Fetch GitHub Actions data
     let githubData = null;
+    let pipelineData = null;
+    
     if (process.env.GITHUB_ACTIONS) {
         console.log('📡 Fetching GitHub Actions data...');
         try {
             githubData = await fetchGitHubData();
         } catch (error) {
             console.warn('⚠️  Failed to fetch GitHub data:', error.message);
+        }
+        
+        console.log('🔧 Fetching detailed pipeline data...');
+        try {
+            pipelineData = await fetchGitHubPipelineData();
+        } catch (error) {
+            console.warn('⚠️  Failed to fetch pipeline data:', error.message);
         }
     }
 
@@ -917,8 +1102,13 @@ async function main() {
     let pipelineStatus = 'RUNNING';
     let pipelineStatusClass = '';
     
-    if (githubData) {
-        // Use GitHub data for more accurate status
+    if (pipelineData) {
+        // Use pipeline data for more accurate status
+        pipelineStatus = pipelineData.run.status;
+        pipelineStatusClass = pipelineStatus === 'FAILED' ? 'status-failed' :
+                           pipelineStatus === 'PASSED' ? 'status-passed' : 'status-warning';
+    } else if (githubData) {
+        // Fallback to GitHub data
         if (githubData.jobs.playwright === 'FAILED' || githubData.jobs.k6 === 'FAILED') {
             pipelineStatus = 'FAILED';
             pipelineStatusClass = 'status-failed';
@@ -945,14 +1135,23 @@ async function main() {
 
     // Read metadata or create default
     let metadata = {
-        lastRun: githubData ? githubData.run.updated_at : (process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString()),
-        commit: githubData ? githubData.run.head_sha : (process.env.GITHUB_SHA || process.env.GITHUB_REF_NAME || 'unknown'),
-        commitShort: githubData ? githubData.run.head_sha.substring(0, 7) : (process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown'),
-        runId: githubData ? githubData.run.id : (process.env.GITHUB_RUN_ID || 'unknown'),
-        runNumber: githubData ? githubData.run.number : (process.env.GITHUB_RUN_NUMBER || 'unknown'),
-        branch: githubData ? githubData.run.head_branch : branch,
-        workflowName: githubData ? githubData.run.workflow_name : (process.env.GITHUB_WORKFLOW || 'QA CI Pipeline'),
-        event: githubData ? githubData.run.event : (process.env.GITHUB_EVENT_NAME || 'push'),
+        lastRun: pipelineData ? pipelineData.run.updated_at : (githubData ? githubData.run.updated_at : (process.env.GITHUB_RUN_ID ? new Date().toISOString() : new Date().toISOString())),
+        commit: pipelineData ? pipelineData.run.head_sha : (githubData ? githubData.run.head_sha : (process.env.GITHUB_SHA || process.env.GITHUB_REF_NAME || 'unknown')),
+        commitShort: pipelineData ? pipelineData.run.head_sha.substring(0, 7) : (githubData ? githubData.run.head_sha.substring(0, 7) : (process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : 'unknown')),
+        runId: pipelineData ? pipelineData.run.id : (githubData ? githubData.run.id : (process.env.GITHUB_RUN_ID || 'unknown')),
+        runNumber: pipelineData ? pipelineData.run.number : (githubData ? githubData.run.number : (process.env.GITHUB_RUN_NUMBER || 'unknown')),
+        branch: pipelineData ? pipelineData.run.head_branch : (githubData ? githubData.run.head_branch : branch),
+        workflowName: pipelineData ? pipelineData.run.workflow_name : (githubData ? githubData.run.workflow_name : (process.env.GITHUB_WORKFLOW || 'QA CI Pipeline')),
+        event: pipelineData ? pipelineData.run.event : (githubData ? githubData.run.event : (process.env.GITHUB_EVENT_NAME || 'push')),
+        pipelineUrl: pipelineData ? pipelineData.run.html_url : 'https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test/actions',
+        k6TestResults: pipelineData ? pipelineData.k6_tests : {
+            load: { status: 'UNKNOWN', conclusion: 'UNKNOWN' },
+            performance: { status: 'UNKNOWN', conclusion: 'UNKNOWN' },
+            stress: { status: 'UNKNOWN', conclusion: 'UNKNOWN' },
+            security: { status: 'UNKNOWN', conclusion: 'UNKNOWN' }
+        },
+        artifactsCount: pipelineData ? pipelineData.artifacts.total_count : 0,
+        k6Artifacts: pipelineData ? pipelineData.artifacts.k6_reports : [],
         ortoni: 'reports/ortoni-report.html',
         k6: {
             load: 'k6/load/index.html',
@@ -961,12 +1160,12 @@ async function main() {
             security: 'k6/security/index.html'
         },
         // Test status information
-        playwrightStatus: githubData ? githubData.jobs.playwright : playwrightStatus,
-        k6Status: githubData ? githubData.jobs.k6 : k6Status,
+        playwrightStatus: pipelineData ? (pipelineData.k6_tests.playwright ? pipelineData.k6_tests.playwright.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.playwright : playwrightStatus),
+        k6Status: pipelineData ? (pipelineData.k6_tests.k6 ? pipelineData.k6_tests.k6.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.k6 : k6Status),
         pipelineStatus: pipelineStatus,
         pipelineStatusClass: pipelineStatusClass,
-        playwrightStatusClass: (githubData ? githubData.jobs.playwright : playwrightStatus) === 'FAILED' ? 'bg-danger text-white' : ((githubData ? githubData.jobs.playwright : playwrightStatus) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark'),
-        k6StatusClass: (githubData ? githubData.jobs.k6 : k6Status) === 'FAILED' ? 'bg-danger text-white' : ((githubData ? githubData.jobs.k6 : k6Status) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark')
+        playwrightStatusClass: (pipelineData ? (pipelineData.k6_tests.playwright ? pipelineData.k6_tests.playwright.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.playwright : playwrightStatus)) === 'FAILED' ? 'bg-danger text-white' : ((pipelineData ? (pipelineData.k6_tests.playwright ? pipelineData.k6_tests.playwright.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.playwright : playwrightStatus)) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark'),
+        k6StatusClass: (pipelineData ? (pipelineData.k6_tests.k6 ? pipelineData.k6_tests.k6.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.k6 : k6Status)) === 'FAILED' ? 'bg-danger text-white' : ((pipelineData ? (pipelineData.k6_tests.k6 ? pipelineData.k6_tests.k6.conclusion : 'UNKNOWN') : (githubData ? githubData.jobs.k6 : k6Status)) === 'PASSED' ? 'bg-success text-white' : 'bg-warning text-dark')
     };
 
     // Only load existing metadata if we're in a GitHub Actions environment
@@ -1017,7 +1216,8 @@ async function main() {
         .replace(/\{\{PLAYWRIGHT_STATUS\}\}/g, metadata.playwrightStatus)
         .replace(/\{\{PLAYWRIGHT_STATUS_CLASS\}\}/g, metadata.playwrightStatusClass)
         .replace(/\{\{K6_STATUS\}\}/g, metadata.k6Status)
-        .replace(/\{\{K6_STATUS_CLASS\}\}/g, metadata.k6StatusClass);
+        .replace(/\{\{K6_STATUS_CLASS\}\}/g, metadata.k6StatusClass)
+        .replace(/\{\{PIPELINE_URL\}\}/g, metadata.pipelineUrl || 'https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test/actions');
 
     // Replace k6 placeholders with actual data if available
     if (k6Summary && k6Summary.tests) {

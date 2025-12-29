@@ -523,8 +523,17 @@ jobs:
             exit 1
           fi
           
+          if [ ! -f "scripts/fetch-github-pipeline-data.js" ]; then
+            echo "❌ ERROR: scripts/fetch-github-pipeline-data.js not found!"
+            exit 1
+          fi
+          
           echo "✅ Running GitHub data fetcher..."
           node scripts/fetch-github-data.js
+          
+          echo ""
+          echo "✅ Running pipeline data fetcher..."
+          node scripts/fetch-github-pipeline-data.js
           
           echo ""
           echo "✅ Running k6 stats extractor..."

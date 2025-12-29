@@ -1,5 +1,5 @@
 {
-  "lastRun": "2025-12-29T01:09:46.373Z",
+  "lastRun": "2025-12-29T16:22:44.002Z",
   "commit": "unknown",
   "commitShort": "unknown",
   "runId": "unknown",
@@ -7,6 +7,27 @@
   "branch": "unknown",
   "workflowName": "QA CI Pipeline",
   "event": "push",
+  "pipelineUrl": "https://github.com/steviebdesignstraining/BBC-Senior-Tester-Take-home-Test/actions",
+  "k6TestResults": {
+    "load": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "performance": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "stress": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    },
+    "security": {
+      "status": "UNKNOWN",
+      "conclusion": "UNKNOWN"
+    }
+  },
+  "artifactsCount": 0,
+  "k6Artifacts": [],
   "ortoni": "reports/ortoni-report.html",
   "k6": {
     "load": "k6/load/index.html",
