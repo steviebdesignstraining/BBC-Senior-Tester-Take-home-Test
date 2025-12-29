@@ -1,0 +1,25 @@
+{
+  "pet": {
+    "id": 892137,
+    "name": "TestPet",
+    "status": "available"
+  },
+  "user": {
+    "id": 864624,
+    "username": "testuser_demo",
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "test+demo@example.com",
+    "password": "TestPassword123!",
+    "phone": "1234567890",
+    "userStatus": 1
+  },
+  "order": {
+    "id": 864223,
+    "petId": 22,
+    "quantity": 1,
+    "shipDate": "2025-12-28T23:21:28.155Z",
+    "status": "placed",
+    "complete": true
+  }
+}

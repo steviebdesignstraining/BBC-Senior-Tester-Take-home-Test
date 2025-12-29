@@ -1,0 +1,224 @@
+{
+    "metrics": {
+        "http_req_sending": {
+            "p(90)": 0.258,
+            "p(95)": 0.41,
+            "avg": 0.16392507492507338,
+            "min": 0.011,
+            "med": 0.074,
+            "max": 35.64
+        },
+        "http_req_duration{expected_response:true}": {
+            "med": 88.714,
+            "max": 145.453,
+            "p(90)": 92.608,
+            "p(95)": 94.24199999999999,
+            "avg": 88.84517762672071,
+            "min": 80.024
+        },
+        "group_duration": {
+            "max": 1657.097459,
+            "p(90)": 1367.3721376,
+            "p(95)": 1371.2808608,
+            "avg": 1329.9492530679213,
+            "min": 1244.618333,
+            "med": 1352.2121665
+        },
+        "checks": {
+            "passes": 138138,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.90": false
+            },
+            "value": 1
+        },
+        "http_req_duration": {
+            "avg": 88.84517762672071,
+            "min": 80.024,
+            "med": 88.714,
+            "max": 145.453,
+            "p(90)": 92.608,
+            "p(95)": 94.24199999999999,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 46046,
+            "thresholds": {
+                "rate<0.10": false
+            },
+            "value": 0
+        },
+        "http_req_connecting": {
+            "p(95)": 0,
+            "avg": 0.189284432958346,
+            "min": 0,
+            "med": 0,
+            "max": 96.593,
+            "p(90)": 0
+        },
+        "http_req_waiting": {
+            "p(90)": 92.269,
+            "p(95)": 93.853,
+            "avg": 88.57370579420537,
+            "min": 74.287,
+            "med": 88.476,
+            "max": 140.373
+        },
+        "iterations": {
+            "rate": 15.31587346199506,
+            "count": 4186
+        },
+        "http_reqs": {
+            "count": 46046,
+            "rate": 168.47460808194566
+        },
+        "http_req_blocked": {
+            "min": 0,
+            "med": 0,
+            "max": 295.583,
+            "p(90)": 0.001,
+            "p(95)": 0.001,
+            "avg": 0.5820774225775293
+        },
+        "vus_max": {
+            "value": 100,
+            "min": 100,
+            "max": 100
+        },
+        "data_received": {
+            "count": 16426091,
+            "rate": 60100.31801987958
+        },
+        "iteration_duration": {
+            "avg": 3990.0999697794996,
+            "min": 3904.372958,
+            "med": 3988.831646,
+            "max": 4304.713834,
+            "p(90)": 4013.097979,
+            "p(95)": 4021.35016675
+        },
+        "data_sent": {
+            "count": 5881607,
+            "rate": 21519.81571074639
+        },
+        "vus": {
+            "value": 2,
+            "min": 2,
+            "max": 100
+        },
+        "http_req_receiving": {
+            "avg": 0.10754675759023442,
+            "min": 0.006,
+            "med": 0.039,
+            "max": 33.177,
+            "p(90)": 0.122,
+            "p(95)": 0.22674999999999795
+        },
+        "http_req_tls_handshaking": {
+            "med": 0,
+            "max": 207.281,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.39111479824523326,
+            "min": 0
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "Pet API Load Tests": {
+                "name": "Pet API Load Tests",
+                "path": "::Pet API Load Tests",
+                "id": "41b7e16d5656eea90eabe7cee7665d8e",
+                "groups": {},
+                "checks": {
+                        "status is correct": {
+                            "path": "::Pet API Load Tests::status is correct",
+                            "id": "66b61d155a7c4b24f37b1a354daa11a1",
+                            "passes": 16744,
+                            "fails": 0,
+                            "name": "status is correct"
+                        },
+                        "response time acceptable": {
+                            "name": "response time acceptable",
+                            "path": "::Pet API Load Tests::response time acceptable",
+                            "id": "bdd1fed609fa3d8d1b0e5e727ed2a372",
+                            "passes": 16744,
+                            "fails": 0
+                        },
+                        "response has body": {
+                            "name": "response has body",
+                            "path": "::Pet API Load Tests::response has body",
+                            "id": "9adead1b250bf4f9f736702e39e68c23",
+                            "passes": 16744,
+                            "fails": 0
+                        }
+                    }
+            },
+            "User API Load Tests": {
+                "name": "User API Load Tests",
+                "path": "::User API Load Tests",
+                "id": "9a4ed5d152a5b6d157ceebea5892c1b3",
+                "groups": {},
+                "checks": {
+                        "status is correct": {
+                            "passes": 16744,
+                            "fails": 0,
+                            "name": "status is correct",
+                            "path": "::User API Load Tests::status is correct",
+                            "id": "57ef247fbe33efdd327002ea80b76ee3"
+                        },
+                        "response time acceptable": {
+                            "name": "response time acceptable",
+                            "path": "::User API Load Tests::response time acceptable",
+                            "id": "af0fca4bc1b2dc406cb41551ba2cf86d",
+                            "passes": 16744,
+                            "fails": 0
+                        },
+                        "response has body": {
+                            "name": "response has body",
+                            "path": "::User API Load Tests::response has body",
+                            "id": "92e81ea686355cda3109449717c4cbbb",
+                            "passes": 16744,
+                            "fails": 0
+                        }
+                    }
+            },
+            "Store API Load Tests": {
+                "id": "f37ab1b37d958990777b29bc91d0a222",
+                "groups": {},
+                "checks": {
+                        "status is correct": {
+                            "name": "status is correct",
+                            "path": "::Store API Load Tests::status is correct",
+                            "id": "585713983655affe71fcb9e945b8a42c",
+                            "passes": 12558,
+                            "fails": 0
+                        },
+                        "response time acceptable": {
+                            "name": "response time acceptable",
+                            "path": "::Store API Load Tests::response time acceptable",
+                            "id": "078e31700a0fc5b3328059418234d3fb",
+                            "passes": 12558,
+                            "fails": 0
+                        },
+                        "response has body": {
+                            "passes": 12558,
+                            "fails": 0,
+                            "name": "response has body",
+                            "path": "::Store API Load Tests::response has body",
+                            "id": "2519195cd6fe6ca18c01520ce120d975"
+                        }
+                    },
+                "name": "Store API Load Tests",
+                "path": "::Store API Load Tests"
+            }
+        },
+        "checks": {}
+    }
+}
