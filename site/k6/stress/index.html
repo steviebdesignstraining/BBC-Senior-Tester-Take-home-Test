@@ -234,8 +234,8 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Index Test</h1>
-      <p>Performance Test Report - Generated 12/28/2025, 5:11:10 PM</p>
+      <h1>Stress Test</h1>
+      <p>Performance Test Report - Generated from k6 summary data</p>
     </div>
     
     <div class="metrics-grid">
@@ -245,7 +245,7 @@
             <div class="metric-title">Average Response Time</div>
             <div class="metric-subtitle">Mean time for HTTP requests</div>
           </div>
-          <div class="metric-value">88.92ms</div>
+          <div class="metric-value" id="avg-response-time">--</div>
         </div>
       </div>
       
@@ -255,7 +255,7 @@
             <div class="metric-title">95th Percentile</div>
             <div class="metric-subtitle">95% of requests completed within</div>
           </div>
-          <div class="metric-value">95.17ms</div>
+          <div class="metric-value" id="p95-response-time">--</div>
         </div>
       </div>
       
@@ -265,7 +265,7 @@
             <div class="metric-title">Error Rate</div>
             <div class="metric-subtitle">Percentage of failed requests</div>
           </div>
-          <div class="metric-value" style="color: var(--warning-color)">77.29%</div>
+          <div class="metric-value" id="error-rate" style="color: var(--warning-color)">--</div>
         </div>
       </div>
       
@@ -275,7 +275,7 @@
             <div class="metric-title">Request Rate</div>
             <div class="metric-subtitle">Requests per second</div>
           </div>
-          <div class="metric-value">1,217.02 req/s</div>
+          <div class="metric-value" id="request-rate">--</div>
         </div>
       </div>
     </div>
@@ -301,23 +301,23 @@
         <h3 class="chart-title">Response Time Analysis</h3>
         <div class="threshold-item">
           <span class="threshold-label">Minimum</span>
-          <span class="threshold-value">78.46ms</span>
+          <span class="threshold-value" id="min-response">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Average</span>
-          <span class="threshold-value">88.92ms</span>
+          <span class="threshold-value" id="avg-response">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">95th Percentile</span>
-          <span class="threshold-value">95.17ms</span>
+          <span class="threshold-value" id="p95-response">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">99th Percentile</span>
-          <span class="threshold-value">0.00ms</span>
+          <span class="threshold-value" id="p99-response">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Maximum</span>
-          <span class="threshold-value">288.32ms</span>
+          <span class="threshold-value" id="max-response">--</span>
         </div>
       </div>
       
@@ -325,19 +325,19 @@
         <h3 class="chart-title">Error Analysis</h3>
         <div class="threshold-item">
           <span class="threshold-label">Error Rate</span>
-          <span class="threshold-value" style="color: var(--warning-color)">77.29%</span>
+          <span class="threshold-value" id="error-rate-value" style="color: var(--warning-color)">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Total Requests</span>
-          <span class="threshold-value">547,860</span>
+          <span class="threshold-value" id="total-requests">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Successful</span>
-          <span class="threshold-value" style="color: var(--success-color)">423,440</span>
+          <span class="threshold-value" id="successful-requests" style="color: var(--success-color)">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Failed</span>
-          <span class="threshold-value" style="color: var(--danger-color)">124,420</span>
+          <span class="threshold-value" id="failed-requests" style="color: var(--danger-color)">--</span>
         </div>
       </div>
       
@@ -345,19 +345,19 @@
         <h3 class="chart-title">Load Metrics</h3>
         <div class="threshold-item">
           <span class="threshold-label">Virtual Users</span>
-          <span class="threshold-value">1 / 300</span>
+          <span class="threshold-value" id="virtual-users">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Iterations</span>
-          <span class="threshold-value">91,310</span>
+          <span class="threshold-value" id="iterations">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Iteration Rate</span>
-          <span class="threshold-value">202.84 it/s</span>
+          <span class="threshold-value" id="iteration-rate">--</span>
         </div>
         <div class="threshold-item">
           <span class="threshold-label">Request Rate</span>
-          <span class="threshold-value">1,217.02 req/s</span>
+          <span class="threshold-value" id="request-rate-value">--</span>
         </div>
       </div>
     </div>
@@ -420,94 +420,185 @@
     </div>
   </div>
   
+  
   <script>
-    // Response Time Distribution Chart
-    const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
-    const responseTimeChart = new Chart(responseTimeCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Min', 'Avg', 'P95', 'P99', 'Max'],
-        datasets: [{
-          label: 'Response Time (ms)',
-          data: [
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(245, 158, 11, 0.8)',
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(168, 85, 247, 0.8)'
-          ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(34, 197, 94, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(239, 68, 68, 1)',
-            'rgba(168, 85, 247, 1)'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Response Time (ms)'
+    // Load k6 data and update the dashboard
+    async function loadK6Data() {
+      try {
+        const response = await fetch('stress-summary.json');
+        if (response.ok) {
+          const data = await response.json();
+          updateDashboardWithData(data);
+        } else {
+          console.error('Failed to load k6 data');
+        }
+      } catch (error) {
+        console.error('Error loading k6 data:', error);
+      }
+    }
+    
+    // Process k6 JSON data
+    function processK6Data(data) {
+      const metrics = data.metrics || {};
+      
+      // Extract response time metrics
+      const durationMetric = metrics.http_req_duration || {};
+      const avgResponseTime = Math.round(durationMetric.avg || 0);
+      const p95ResponseTime = Math.round(durationMetric['p(95)'] || 0);
+      const p99ResponseTime = Math.round(durationMetric['p(99)'] || 0);
+      const minResponseTime = Math.round(durationMetric.min || 0);
+      const maxResponseTime = Math.round(durationMetric.max || 0);
+      
+      // Extract request metrics
+      const totalRequests = metrics.http_reqs ? metrics.http_reqs.count || 0 : 0;
+      const failedRequests = metrics.http_req_failed ? metrics.http_req_failed.count || 0 : 0;
+      const successRate = totalRequests > 0 ? Math.round(((totalRequests - failedRequests) / totalRequests) * 100) : 0;
+      const errorRate = 100 - successRate;
+      
+      // Extract rate metrics
+      const requestRate = metrics.http_reqs ? Math.round(metrics.http_reqs.rate || 0) : 0;
+      
+      return {
+        avgResponseTime,
+        p95ResponseTime,
+        p99ResponseTime,
+        minResponseTime,
+        maxResponseTime,
+        totalRequests,
+        failedRequests,
+        successRate,
+        errorRate,
+        requestRate
+      };
+    }
+    
+    // Update dashboard with loaded data
+    function updateDashboardWithData(data) {
+      const metrics = processK6Data(data);
+      
+      // Update metric cards
+      document.getElementById('avg-response-time').textContent = `${metrics.avgResponseTime}ms`;
+      document.getElementById('p95-response-time').textContent = `${metrics.p95ResponseTime}ms`;
+      document.getElementById('error-rate').textContent = `${metrics.errorRate}%`;
+      document.getElementById('request-rate').textContent = `${metrics.requestRate} req/s`;
+      
+      // Update threshold values
+      document.getElementById('min-response').textContent = `${metrics.minResponseTime}ms`;
+      document.getElementById('avg-response').textContent = `${metrics.avgResponseTime}ms`;
+      document.getElementById('p95-response').textContent = `${metrics.p95ResponseTime}ms`;
+      document.getElementById('p99-response').textContent = `${metrics.p99ResponseTime}ms`;
+      document.getElementById('max-response').textContent = `${metrics.maxResponseTime}ms`;
+      
+      document.getElementById('error-rate-value').textContent = `${metrics.errorRate}%`;
+      document.getElementById('total-requests').textContent = metrics.totalRequests.toLocaleString();
+      document.getElementById('successful-requests').textContent = (metrics.totalRequests - metrics.failedRequests).toLocaleString();
+      document.getElementById('failed-requests').textContent = metrics.failedRequests.toLocaleString();
+      
+      // Update test-specific values
+      
+      document.getElementById('virtual-users').textContent = '1 / 300';
+      document.getElementById('iterations').textContent = '0';
+      document.getElementById('iteration-rate').textContent = '0 it/s';
+      
+      document.getElementById('request-rate-value').textContent = `${metrics.requestRate} req/s`;
+      
+      // Update charts
+      updateCharts(metrics);
+    }
+    
+    // Update charts with real data
+    function updateCharts(metrics) {
+      // Response Time Distribution Chart
+      const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+      const responseTimeChart = new Chart(responseTimeCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Min', 'Avg', 'P95', 'P99', 'Max'],
+          datasets: [{
+            label: 'Response Time (ms)',
+            data: [
+              metrics.minResponseTime,
+              metrics.avgResponseTime,
+              metrics.p95ResponseTime,
+              metrics.p99ResponseTime,
+              metrics.maxResponseTime
+            ],
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.8)',
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(245, 158, 11, 0.8)',
+              'rgba(239, 68, 68, 0.8)',
+              'rgba(168, 85, 247, 0.8)'
+            ],
+            borderColor: [
+              'rgba(59, 130, 246, 1)',
+              'rgba(34, 197, 94, 1)',
+              'rgba(245, 158, 11, 1)',
+              'rgba(239, 68, 68, 1)',
+              'rgba(168, 85, 247, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Response Time (ms)'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
             }
           }
+        }
+      });
+      
+      // Thresholds Chart
+      const thresholdsCtx = document.getElementById('thresholdsChart').getContext('2d');
+      const thresholdsChart = new Chart(thresholdsCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Response Time (P95)', 'Error Rate', 'Request Rate'],
+          datasets: [{
+            data: [
+              metrics.p95ResponseTime,
+              metrics.errorRate,
+              metrics.requestRate
+            ],
+            backgroundColor: [
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(239, 68, 68, 0.8)',
+              'rgba(59, 130, 246, 0.8)'
+            ],
+            borderColor: [
+              'rgba(34, 197, 94, 1)',
+              'rgba(239, 68, 68, 1)',
+              'rgba(59, 130, 246, 1)'
+            ],
+            borderWidth: 2
+          }]
         },
-        plugins: {
-          legend: {
-            display: false
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
           }
         }
-      }
-    });
+      });
+    }
     
-    // Thresholds Chart
-    const thresholdsCtx = document.getElementById('thresholdsChart').getContext('2d');
-    const thresholdsChart = new Chart(thresholdsCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Response Time (P95)', 'Error Rate', 'Request Rate'],
-        datasets: [{
-          data: [
-            0,
-            100,
-            0
-          ],
-          backgroundColor: [
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(59, 130, 246, 0.8)'
-          ],
-          borderColor: [
-            'rgba(34, 197, 94, 1)',
-            'rgba(239, 68, 68, 1)',
-            'rgba(59, 130, 246, 1)'
-          ],
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom'
-          }
-        }
-      }
-    });
+    // Load data when page loads
+    document.addEventListener('DOMContentLoaded', loadK6Data);
   </script>
 </body>
 </html>
