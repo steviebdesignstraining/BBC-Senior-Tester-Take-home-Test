@@ -133,16 +133,29 @@ function fetchJSON(endpoint, headers = {}) {
  * Save GitHub data to file
  */
 function saveGitHubData(data) {
-    const siteDir = path.join(__dirname, '..', 'site');
-    const reportsDir = path.join(siteDir, 'reports');
-    
+    // Check if we're running from test-output directory (integration test)
+    const cwd = process.cwd();
+    const isTestOutput = cwd.includes('test-output');
+
+    let siteDir, reportsDir;
+
+    if (isTestOutput) {
+        // Adjust paths for integration test environment
+        siteDir = path.join(cwd, 'site');
+        reportsDir = path.join(siteDir, 'reports');
+    } else {
+        // Normal paths from project root
+        siteDir = path.join(__dirname, '..', 'site');
+        reportsDir = path.join(siteDir, 'reports');
+    }
+
     if (!fs.existsSync(reportsDir)) {
         fs.mkdirSync(reportsDir, { recursive: true });
     }
-    
+
     const githubDataFile = path.join(reportsDir, 'github-data.json');
     fs.writeFileSync(githubDataFile, JSON.stringify(data, null, 2));
-    
+
     console.log(`✓ GitHub data saved to: ${githubDataFile}`);
 }
 

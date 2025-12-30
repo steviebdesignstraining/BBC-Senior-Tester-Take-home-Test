@@ -1049,9 +1049,23 @@ const dashboardTemplate = `<!--With the new graphs, charts and tables, the site/
 </html>`;
 
 async function main() {
-    const siteDir = path.join(__dirname, '..', 'site');
-    const reportsDir = path.join(siteDir, 'reports');
-    const metadataFile = path.join(reportsDir, 'metadata.json');
+    // Check if we're running from test-output directory (integration test)
+    const cwd = process.cwd();
+    const isTestOutput = cwd.includes('test-output');
+
+    let siteDir, reportsDir, metadataFile;
+
+    if (isTestOutput) {
+        // Adjust paths for integration test environment
+        siteDir = path.join(cwd, 'site');
+        reportsDir = path.join(siteDir, 'reports');
+        metadataFile = path.join(reportsDir, 'metadata.json');
+    } else {
+        // Normal paths from project root
+        siteDir = path.join(__dirname, '..', 'site');
+        reportsDir = path.join(siteDir, 'reports');
+        metadataFile = path.join(reportsDir, 'metadata.json');
+    }
     
     // Create directories if they don't exist
     if (!fs.existsSync(siteDir)) {

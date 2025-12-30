@@ -118,10 +118,26 @@ function extractK6Stats(inputFile, testName) {
  * Generate combined k6 summary
  */
 function generateK6Summary() {
-    const k6ResultsDir = path.join(__dirname, '..', 'k6-results');
-    const k6SummaryDir = path.join(__dirname, '..', 'k6', 'results');
-    const siteDir = path.join(__dirname, '..', 'site');
-    const k6SummaryOutputDir = path.join(siteDir, 'k6-summary');
+    // Check if we're running from test-output directory (integration test)
+    const cwd = process.cwd();
+    const isTestOutput = cwd.includes('test-output');
+
+    let k6ResultsDir, k6SummaryDir, siteDir, k6SummaryOutputDir;
+
+    if (isTestOutput) {
+        // Adjust paths for integration test environment
+        const testOutputDir = cwd;
+        k6ResultsDir = path.join(testOutputDir, 'k6-results');
+        k6SummaryDir = path.join(testOutputDir, 'k6', 'results');
+        siteDir = path.join(testOutputDir, 'site');
+        k6SummaryOutputDir = path.join(siteDir, 'k6-summary');
+    } else {
+        // Normal paths from project root
+        k6ResultsDir = path.join(__dirname, '..', 'k6-results');
+        k6SummaryDir = path.join(__dirname, '..', 'k6', 'results');
+        siteDir = path.join(__dirname, '..', 'site');
+        k6SummaryOutputDir = path.join(siteDir, 'k6-summary');
+    }
     
     if (!fs.existsSync(k6SummaryOutputDir)) {
         fs.mkdirSync(k6SummaryOutputDir, { recursive: true });

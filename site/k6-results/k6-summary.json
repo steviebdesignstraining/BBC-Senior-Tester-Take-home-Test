@@ -1,9 +1,9 @@
 {
-  "timestamp": "2025-12-29T01:06:08.534Z",
+  "timestamp": "2025-12-29T12:18:00.000Z",
   "tests": {
     "load": {
       "test": "load",
-      "timestamp": "2025-12-29T01:06:08.538Z",
+      "timestamp": "2025-12-29T12:18:00.000Z",
       "metrics": {
         "totalRequests": 46046,
         "failedRequests": 46046,
@@ -242,11 +242,11 @@
     },
     "performance": {
       "test": "performance",
-      "timestamp": "2025-12-29T01:06:08.539Z",
+      "timestamp": "2025-12-29T12:18:00.000Z",
       "metrics": {
         "totalRequests": 80,
-        "failedRequests": 0,
-        "successRate": 100,
+        "failedRequests": 2,
+        "successRate": 97.5,
         "avgDuration": 180,
         "p95Duration": 360,
         "p99Duration": 390,
@@ -256,7 +256,8 @@
       "summary": {
         "metrics": {
           "http_reqs": {
-            "count": 80
+            "count": 80,
+            "rate": 0
           },
           "http_req_failed": {
             "count": 2
@@ -515,11 +516,11 @@
     },
     "security": {
       "test": "security",
-      "timestamp": "2025-12-29T01:06:08.540Z",
+      "timestamp": "2025-12-29T12:18:00.000Z",
       "metrics": {
         "totalRequests": 50,
-        "failedRequests": 0,
-        "successRate": 100,
+        "failedRequests": 8,
+        "successRate": 84,
         "avgDuration": 400,
         "p95Duration": 720,
         "p99Duration": 780,
@@ -529,7 +530,8 @@
       "summary": {
         "metrics": {
           "http_reqs": {
-            "count": 50
+            "count": 50,
+            "rate": 0
           },
           "http_req_failed": {
             "count": 8
