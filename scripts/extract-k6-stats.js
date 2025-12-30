@@ -143,6 +143,11 @@ function generateK6Summary() {
         fs.mkdirSync(k6SummaryOutputDir, { recursive: true });
     }
 
+    const k6ResultsDir = path.join(siteDir, 'k6-results');
+    if (!fs.existsSync(k6ResultsDir)) {
+        fs.mkdirSync(k6ResultsDir, { recursive: true });
+    }
+
     const testTypes = ['load', 'performance', 'stress', 'security'];
     const summary = {
         timestamp: new Date().toISOString(),
@@ -201,12 +206,12 @@ function generateK6Summary() {
 
     // Save individual test stats
     Object.keys(summary.tests).forEach(testType => {
-        const outputFile = path.join(k6SummaryDir, `${testType}-stats.json`);
+        const outputFile = path.join(siteDir, 'k6-results', `${testType}-stats.json`);
         fs.writeFileSync(outputFile, JSON.stringify(summary.tests[testType], null, 2));
     });
 
-    // Save combined summary
-    const summaryFile = path.join(k6SummaryDir, 'k6-summary.json');
+    // Save combined summary to site/k6-summary directory
+    const summaryFile = path.join(k6SummaryOutputDir, 'k6-summary.json');
     fs.writeFileSync(summaryFile, JSON.stringify(summary, null, 2));
 
     console.log(`✅ Generated k6 summary: ${summaryFile}`);
