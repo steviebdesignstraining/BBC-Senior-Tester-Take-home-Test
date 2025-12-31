@@ -1,107 +1,110 @@
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Extract key statistics from k6 JSON results
- */
-function extractK6Stats(inputFile, testName) {
-    if (!fs.existsSync(inputFile)) {
-        console.warn(`⚠️  k6 results file not found: ${inputFile}`);
-        return null;
-    }
+function parseK6Metrics(filePath) {
+    const metrics = {};
 
-    try {
-        const fileContent = fs.readFileSync(inputFile, 'utf8');
-        const lines = fileContent.trim().split('\n');
+    const lines = fs.readFileSync(filePath, 'utf8').trim().split('\n');
 
-        let summary = null;
-
-        for (const line of lines) {
-            try {
-                const parsed = JSON.parse(line);
-                if (parsed.type === 'Point' && parsed.metric === 'http_req_duration') {
-                    summary = parsed.data;
-                }
-            } catch {
-                // Ignore non-JSON lines
-            }
+    for (const line of lines) {
+        let entry;
+        try {
+            entry = JSON.parse(line);
+        } catch {
+            continue;
         }
 
-        if (summary) {
-            return {
-                test: testName,
-                avg: summary.avg,
-                p95: summary['p(95)'],
-                max: summary.max,
-                min: summary.min,
-            };
+        if (!entry.metric || !entry.data) continue;
+
+        const name = entry.metric;
+
+        // Counter metrics
+        if (entry.type === 'Metric' && entry.data.type === 'counter') {
+            metrics[name] = { type: 'counter' };
         }
 
-        return null;
-    } catch (error) {
-        console.error(`❌ Error reading k6 stats from ${inputFile}:`, error);
-        return null;
+        // Rate metrics
+        if (entry.type === 'Metric' && entry.data.type === 'rate') {
+            metrics[name] = { type: 'rate' };
+        }
+
+        // Trend metrics
+        if (entry.type === 'Metric' && entry.data.type === 'trend') {
+            metrics[name] = { type: 'trend' };
+        }
+
+        // Metric values
+        if (entry.type === 'Point' && metrics[name]) {
+            metrics[name].values = entry.data;
+        }
     }
+
+    return metrics;
 }
 
-/**
- * Generate a consolidated k6 summary
- */
+function extractK6Stats(inputFile, testName) {
+    if (!fs.existsSync(inputFile)) {
+        console.warn(`⚠️  Missing k6 results: ${inputFile}`);
+        return null;
+    }
+
+    const metrics = parseK6Metrics(inputFile);
+
+    const reqs = metrics.http_reqs?.values || {};
+    const failed = metrics.http_req_failed?.values || {};
+    const duration = metrics.http_req_duration?.values || {};
+
+    const totalRequests = Math.round(reqs.count || 0);
+    const failRate = failed.rate || 0;
+    const failedRequests = Math.round(totalRequests * failRate);
+    const successRate = totalRequests > 0
+        ? ((1 - failRate) * 100).toFixed(2)
+        : '0.00';
+
+    return {
+        test: testName,
+        totalRequests,
+        successRate: `${successRate}%`,
+        failedRequests,
+        requestsPerSec: Math.round(reqs.rate || 0),
+        avg: Math.round(duration.avg || 0),
+        p95: Math.round(duration['p(95)'] || 0),
+        p99: Math.round(duration['p(99)'] || 0),
+        min: Math.round(duration.min || 0),
+        max: Math.round(duration.max || 0),
+    };
+}
+
 function generateK6Summary(resultsDir, outputFile) {
-    const testTypes = ['load', 'performance', 'stress', 'security'];
+    const tests = ['load', 'performance', 'stress', 'security'];
     const summary = [];
 
-    for (const testType of testTypes) {
-        const inputFile = path.join(resultsDir, `${testType}.json`);
-        const stats = extractK6Stats(inputFile, testType);
-        if (stats) {
-            summary.push(stats);
-        }
+    for (const test of tests) {
+        const file = path.join(resultsDir, `${test}.json`);
+        const stats = extractK6Stats(file, test);
+        if (stats) summary.push(stats);
     }
 
     fs.writeFileSync(outputFile, JSON.stringify(summary, null, 2));
-    console.log('✅ k6 statistics extracted successfully');
+    console.log('✅ Accurate k6 summary generated');
 }
 
-/**
- * Main execution
- */
 function main() {
-    let k6ResultsDir, k6SummaryDir, siteDir, k6SummaryOutputDir;
+    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+    const siteDir = path.join(workspace, 'site');
+    const k6ResultsDir = path.join(siteDir, 'k6-results');
+    const outputDir = path.join(siteDir, 'reports');
 
-    const testOutputDir = process.env.GITHUB_WORKSPACE || process.cwd();
+    fs.mkdirSync(outputDir, { recursive: true });
 
-    if (fs.existsSync(path.join(testOutputDir, 'k6-results'))) {
-        k6ResultsDir = path.join(testOutputDir, 'k6-results');
-    } else {
-        k6ResultsDir = path.join(__dirname, '..', 'k6-results');
-    }
-
-    siteDir = path.join(testOutputDir, 'site');
-    k6SummaryDir = path.join(siteDir, 'reports');
-    k6SummaryOutputDir = path.join(k6SummaryDir, 'k6-summary.json');
-
-    // ✅ FIX: reuse existing variable, do NOT redeclare
-    k6ResultsDir = path.join(siteDir, 'k6-results');
-
-    if (!fs.existsSync(k6ResultsDir)) {
-        fs.mkdirSync(k6ResultsDir, { recursive: true });
-    }
-
-    if (!fs.existsSync(k6SummaryDir)) {
-        fs.mkdirSync(k6SummaryDir, { recursive: true });
-    }
-
-    generateK6Summary(k6ResultsDir, k6SummaryOutputDir);
+    generateK6Summary(
+        k6ResultsDir,
+        path.join(outputDir, 'k6-summary.json')
+    );
 }
 
-// Export for reuse
-module.exports = {
-    extractK6Stats,
-    generateK6Summary,
-};
-
-// Run if called directly
 if (require.main === module) {
     main();
 }
+
+module.exports = { extractK6Stats, generateK6Summary };
