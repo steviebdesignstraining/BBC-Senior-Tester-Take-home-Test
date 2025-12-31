@@ -44,8 +44,8 @@ function parseK6Metrics(filePath) {
 
 function extractK6Stats(inputFile, testName) {
     if (!fs.existsSync(inputFile)) {
-        console.warn(`⚠️  Missing k6 results: ${inputFile}`);
-        return null;
+        console.error(`❌ Missing k6 results: ${inputFile}`);
+        process.exit(1);
     }
 
     const metrics = parseK6Metrics(inputFile);

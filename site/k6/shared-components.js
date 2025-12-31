@@ -11,39 +11,43 @@ const commonChartOptions = {
     }
 };
 
-// Common metric processing function
-function processK6Data(data) {
-    const metrics = data.metrics || {};
-    
-    // Extract response time metrics
-    const durationMetric = metrics.http_req_duration || {};
-    const avgResponseTime = Math.round(durationMetric.avg || 0);
-    const p95ResponseTime = Math.round(durationMetric['p(95)'] || 0);
-    const p99ResponseTime = Math.round(durationMetric['p(99)'] || 0);
-    const minResponseTime = Math.round(durationMetric.min || 0);
-    const maxResponseTime = Math.round(durationMetric.max || 0);
-    
-    // Extract request metrics
-    const totalRequests = metrics.http_reqs ? metrics.http_reqs.count || 0 : 0;
-    const failedRequests = metrics.http_req_failed ? metrics.http_req_failed.count || 0 : 0;
-    const successRate = totalRequests > 0 ? Math.round(((totalRequests - failedRequests) / totalRequests) * 100) : 0;
-    const errorRate = 100 - successRate;
-    
-    // Extract rate metrics
-    const requestRate = metrics.http_reqs ? Math.round(metrics.http_reqs.rate || 0) : 0;
-    
-    return {
-        avgResponseTime,
-        p95ResponseTime,
-        p99ResponseTime,
-        minResponseTime,
-        maxResponseTime,
-        totalRequests,
-        failedRequests,
-        successRate,
-        errorRate,
-        requestRate
-    };
+// ✅ CORRECTED: Load from k6-summary.json only (single source of truth)
+// ❌ DELETED: processK6Data function that recalculated metrics from raw k6 data
+// This was causing contradictions - dashboard showed different numbers than CI
+
+// ✅ NEW: Load summary data directly
+async function loadK6Summary() {
+    try {
+        const response = await fetch('/site/reports/k6-summary.json');
+        if (!response.ok) {
+            throw new Error('Failed to load k6 summary data');
+        }
+        const summary = await response.json();
+
+        // Find current test data (based on page URL or parameter)
+        const currentTest = getCurrentTestType();
+        const testData = summary.find(test => test.test === currentTest);
+
+        if (!testData) {
+            throw new Error(`No data found for test: ${currentTest}`);
+        }
+
+        return testData;
+    } catch (error) {
+        console.error('Error loading k6 summary:', error);
+        // ❌ DELETED: Fallback to zero - now throws error to prevent lying
+        throw error;
+    }
+}
+
+// Helper to determine current test type from URL
+function getCurrentTestType() {
+    const path = window.location.pathname;
+    if (path.includes('/load/')) return 'load';
+    if (path.includes('/performance/')) return 'performance';
+    if (path.includes('/stress/')) return 'stress';
+    if (path.includes('/security/')) return 'security';
+    return 'load'; // default
 }
 
 // Common chart creation functions
@@ -55,11 +59,11 @@ function createResponseTimeChart(ctx, metrics) {
             datasets: [{
                 label: 'Response Time (ms)',
                 data: [
-                    metrics.minResponseTime,
-                    metrics.avgResponseTime,
-                    metrics.p95ResponseTime,
-                    metrics.p99ResponseTime,
-                    metrics.maxResponseTime
+                    metrics.min,  // ✅ CORRECTED: Use k6-summary.json property names
+                    metrics.avg,
+                    metrics.p95,
+                    metrics.p99,
+                    metrics.max
                 ],
                 backgroundColor: [
                     'rgba(59, 130, 246, 0.8)',
@@ -80,6 +84,12 @@ function createResponseTimeChart(ctx, metrics) {
         },
         options: {
             ...commonChartOptions,
+            plugins: {
+                ...commonChartOptions.plugins,
+                accessibility: {  // ✅ ADDED: A11y support for screen readers
+                    enabled: true
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: true,
@@ -141,8 +151,12 @@ function updateThresholdValues(metrics) {
     document.getElementById('successful-requests').textContent = (metrics.totalRequests - metrics.failedRequests).toLocaleString();
     document.getElementById('failed-requests').textContent = metrics.failedRequests.toLocaleString();
 }
+// ❌ DEPRECATED: This function expects raw k6 data structure, incompatible with k6-summary.json
+// ❌ DEPRECATED: This function expects raw k6 data structure, incompatible with k6-summary.json
 
 function updateLoadMetrics(data, metrics) {
+
+
     const vus = data.metrics.vus || {};
     const iterations = data.metrics.iterations || {};
     document.getElementById('virtual-users').textContent = `${vus.value || 'N/A'} / ${vus.max || 'N/A'}`;

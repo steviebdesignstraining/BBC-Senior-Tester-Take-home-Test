@@ -1,0 +1,7 @@
+Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location,Private,RRULE
+Sort driver's license,01/15/2026,,,TRUE,Renew or sort out driver's license,,,
+Take sofa place to court,02/01/2026,,,TRUE,Court appearance for sofa place,,,
+January Fasting,01/01/2026,,01/31/2026,,TRUE,Fasting throughout January,,,
+Gym session,01/01/2026,,,TRUE,Focus on health and gym - workout session,,TRUE,FREQ=WEEKLY;BYDAY=TU,TH,SA;UNTIL=20261231T235959Z
+Check complaints to Croydon council,01/06/2026,,,TRUE,Review and sort out complaints to Croydon council and governing bodies,,TRUE,FREQ=WEEKLY;BYDAY=MO;UNTIL=20261231T235959Z
+Budget review,01/31/2026,,,TRUE,Review savings and budget to save money,,TRUE,FREQ=MONTHLY;BYMONTHDAY=31;UNTIL=20261231T235959Z

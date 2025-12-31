@@ -460,6 +460,34 @@ jobs:
           path: k6-download/security
         continue-on-error: true
 
+      - name: Download k6 Load JSON results
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-load
+          path: k6-json-download/load
+        continue-on-error: true
+
+      - name: Download k6 Performance JSON results
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-performance
+          path: k6-json-download/performance
+        continue-on-error: true
+
+      - name: Download k6 Stress JSON results
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-stress
+          path: k6-json-download/stress
+        continue-on-error: true
+
+      - name: Download k6 Security JSON results
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-security
+          path: k6-json-download/security
+        continue-on-error: true
+
       - name: Merge all artifacts
         run: |
           echo "📦 Merging all artifacts into site directory..."
@@ -536,7 +564,17 @@ jobs:
           node scripts/fetch-github-pipeline-data.js
           
           echo ""
-          echo "✅ Running k6 stats extractor..."
+          echo "✅ Preparing k6 results for dashboard...
+      run: |
+        mkdir -p site/k6-results
+        cp k6-results/*.json site/k6-results/ || echo "No k6 JSON files found"
+
+      - name: Validate k6 summary consistency
+        run: node scripts/validate-k6-summary.js
+
+      - name: Generate final dashboard
+        run: |
+          echo "🎨 Generating final dashboard...""
           node scripts/extract-k6-stats.js
           
           echo ""
