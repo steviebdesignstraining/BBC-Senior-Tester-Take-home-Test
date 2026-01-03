@@ -143,14 +143,19 @@ jobs:
           ls -lh site/reports/ 2>/dev/null || echo "Empty"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      - name: Generate initial dashboard
-        env:
-          PLAYWRIGHT_STATUS: ${{ env.PLAYWRIGHT_STATUS }}
-          K6_STATUS: PENDING
+      
+      - name: Copy Ortoni report to site root
         run: |
-          echo "🎨 Generating initial dashboard..."
-          node scripts/update-index.js
-
+          echo "📄 Copying Ortoni report to site root..."
+          if [ -f "ortoni-report.html" ]; then
+            echo "✅ Found ortoni-report.html, copying to site/index.html"
+            mkdir -p site
+            cp ortoni-report.html site/index.html
+            echo "📄 Ortoni report copied successfully"
+          else
+            echo "⚠️  ortoni-report.html not found, using fallback dashboard"
+            node scripts/update-index.js
+          fi
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v4
         with:
@@ -551,64 +556,78 @@ jobs:
           echo "  GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
           echo ""
           
-          # Verify scripts exist
-          if [ ! -f "scripts/update-index.js" ]; then
-            echo "❌ ERROR: scripts/update-index.js not found!"
-            echo "Available scripts:"
-            ls -la scripts/
-            exit 1
-          fi
-          
-          if [ ! -f "scripts/fetch-github-data.js" ]; then
-            echo "❌ ERROR: scripts/fetch-github-data.js not found!"
-            exit 1
-          fi
-          
-          if [ ! -f "scripts/extract-k6-stats.js" ]; then
-            echo "❌ ERROR: scripts/extract-k6-stats.js not found!"
-            exit 1
-          fi
-          
-          if [ ! -f "scripts/fetch-github-pipeline-data.js" ]; then
-            echo "❌ ERROR: scripts/fetch-github-pipeline-data.js not found!"
-            exit 1
-          fi
-          
-          echo "✅ Running GitHub data fetcher..."
-          node scripts/fetch-github-data.js
-          
-          echo ""
-          echo "✅ Running pipeline data fetcher..."
-          node scripts/fetch-github-pipeline-data.js
-          
-          echo ""
-          echo "✅ Preparing k6 results for dashboard..."
-          mkdir -p site/k6-results
-          cp k6-json-download/*/*.json site/k6-results/ 2>/dev/null || echo "No k6 JSON files found"
-
-          echo ""
-          echo "✅ Running k6 stats extractor..."
-          node scripts/extract-k6-stats.js
-
-          echo ""
-          echo "✅ Running dashboard generator..."
-          node scripts/update-index.js
-
-          if [ $? -eq 0 ]; then
-            echo ""
-            echo "✅ Dashboard generated successfully!"
-            echo ""
-            if [ -f "site/index.html" ]; then
-              echo "📄 index.html size: $(wc -c < site/index.html) bytes"
-              echo ""
-              echo "📄 Dashboard preview (first 40 lines):"
-              head -40 site/index.html
-            fi
+          # Check if Ortoni report already exists in site root
+          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
+            echo "✅ Ortoni report already exists in site/index.html"
+            echo "📄 Ortoni report size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
           else
+            echo "⚠️  Ortoni report not found, generating fallback dashboard..."
+            
+            # Verify scripts exist
+            if [ ! -f "scripts/update-index.js" ]; then
+              echo "❌ ERROR: scripts/update-index.js not found!"
+              echo "Available scripts:"
+              ls -la scripts/
+              exit 1
+            fi
+            
+            if [ ! -f "scripts/fetch-github-data.js" ]; then
+              echo "❌ ERROR: scripts/fetch-github-data.js not found!"
+              exit 1
+            fi
+            
+            if [ ! -f "scripts/extract-k6-stats.js" ]; then
+              echo "❌ ERROR: scripts/extract-k6-stats.js not found!"
+              exit 1
+            fi
+            
+            if [ ! -f "scripts/fetch-github-pipeline-data.js" ]; then
+              echo "❌ ERROR: scripts/fetch-github-pipeline-data.js not found!"
+              exit 1
+            fi
+            
+            echo "✅ Running GitHub data fetcher..."
+            node scripts/fetch-github-data.js
+            
             echo ""
-            echo "❌ Dashboard generation failed!"
+            echo "✅ Running pipeline data fetcher..."
+            node scripts/fetch-github-pipeline-data.js
+            
+            echo ""
+            echo "✅ Preparing k6 results for dashboard..."
+            mkdir -p site/k6-results
+            cp k6-json-download/*/*.json site/k6-results/ 2>/dev/null || echo "No k6 JSON files found"
+
+            echo ""
+            echo "✅ Running k6 stats extractor..."
+            node scripts/extract-k6-stats.js
+
+            echo ""
+            echo "✅ Running dashboard generator..."
+            node scripts/update-index.js
+
+            if [ $? -eq 0 ]; then
+              echo ""
+              echo "✅ Fallback dashboard generated successfully!"
+            else
+              echo ""
+              echo "❌ Dashboard generation failed!"
+              exit 1
+            fi
+          fi
+          
+          # Ensure site/index.html exists
+          if [ ! -f "site/index.html" ]; then
+            echo "❌ ERROR: site/index.html not found after dashboard generation!"
             exit 1
           fi
+          
+          echo ""
+          echo "✅ Final dashboard ready!"
+          echo "📄 Final index.html size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
+          echo ""
+          echo "📄 Dashboard preview (first 40 lines):"
+          head -40 site/index.html
 
       - name: Verify deployment files
         run: |
@@ -618,6 +637,13 @@ jobs:
           if [ ! -f "site/index.html" ]; then
             echo "❌ ERROR: site/index.html not found!"
             exit 1
+          fi
+          
+          # Check if this is an Ortoni report
+          if grep -q "ortoni" site/index.html 2>/dev/null; then
+            echo "✅ Ortoni report detected in site/index.html"
+          else
+            echo "⚠️  Using fallback dashboard (not Ortoni report)"
           fi
           
           echo "✅ Required files:"
@@ -656,9 +682,15 @@ jobs:
           echo "   Playwright: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}"
           echo "   k6: ${{ needs.k6.outputs.k6_status || 'UNKNOWN' }}"
           echo ""
+          echo "📄 Dashboard Information:"
+          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
+            echo "   ✅ Using Ortoni Report as main dashboard"
+          else
+            echo "   ⚠️  Using fallback dashboard (Ortoni report not available)"
+          fi
+          echo ""
           echo "🔗 Direct Links:"
-          echo "   Dashboard: ${{ steps.deployment.outputs.page_url }}"
-          echo "   Playwright: ${{ steps.deployment.outputs.page_url }}reports/ortoni-report.html"
+          echo "   Main Dashboard: ${{ steps.deployment.outputs.page_url }}"
           echo "   k6 Load: ${{ steps.deployment.outputs.page_url }}k6/load/index.html"
           echo "   k6 Performance: ${{ steps.deployment.outputs.page_url }}k6/performance/index.html"
           echo "   k6 Stress: ${{ steps.deployment.outputs.page_url }}k6/stress/index.html"
