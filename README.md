@@ -242,6 +242,9 @@ BBC-Senior-Tester-Take-home-Test/
 | **Invalid Data Handling** | 1. Send request with malformed or invalid data<br>2. Verify appropriate error response | API should reject invalid data with proper error messages | **Scenario:** Handle invalid pet data<br>**Given:** Invalid pet data is provided (missing required fields)<br>**When:** POST request is sent to /pet endpoint<br>**Then:** Request is rejected with error message | HTTP 400 Bad Request with error details | **Headers:** Content-Type: application/json<br>**Body:** { "name": "Buddy" } (missing required fields) | **Response:** { "code": 400, "type": "unknown", "message": "Invalid input" } |
 | **Non-existent Resource Access** | 1. Send request for non-existent resource ID<br>2. Verify appropriate error response | API should return 404 for non-existent resources | **Scenario:** Access non-existent pet<br>**Given:** Pet ID does not exist in system<br>**When:** GET request is sent to /pet/99999<br>**Then:** Resource not found error is returned | HTTP 404 Not Found with error message | **Headers:** Content-Type: application/json<br>**Path Parameter:** petId = 99999 | **Response:** { "code": 1, "type": "error", "message": "Pet not found" } |
 
+### Additional Test Plans
+I have created a regression test suite of test cases covering the full api collection for positive, negative and edgecase scenarios. Please see https://www.notion.so/BBC-Senior-Tester-Take-home-Test-2d240221abc080f0b701ef31f7a77366?source=copy_link
+
 ### Getting Help
 
 For additional support or questions about the test implementation:
