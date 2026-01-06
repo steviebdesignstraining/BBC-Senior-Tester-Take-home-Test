@@ -437,6 +437,7 @@ jobs:
           mkdir -p site/k6/performance
           mkdir -p site/k6/stress
           mkdir -p site/k6/security
+          mkdir -p site/k6-results
 
       - name: Download Playwright reports
         uses: actions/download-artifact@v4
@@ -532,6 +533,12 @@ jobs:
             fi
           done
           
+          # Ensure k6-results directory exists and list its contents
+          mkdir -p site/k6-results
+          echo ""
+          echo "📁 k6-results directory contents:"
+          ls -lh site/k6-results/ 2>/dev/null || echo "Directory empty or not found"
+          
           echo ""
           echo "📊 Final site structure:"
           tree site -L 3 2>/dev/null || find site -type f
@@ -597,6 +604,16 @@ jobs:
             echo "✅ Preparing k6 results for dashboard..."
             mkdir -p site/k6-results
             cp k6-json-download/*/*.json site/k6-results/ 2>/dev/null || echo "No k6 JSON files found"
+            
+            # Debug: Check what files are in k6-results
+            echo ""
+            echo "🔍 Debug: Checking k6-results directory..."
+            ls -lh site/k6-results/ 2>/dev/null || echo "k6-results directory is empty"
+            
+            # Debug: Check what files are in k6-json-download
+            echo ""
+            echo "🔍 Debug: Checking k6-json-download directory..."
+            find k6-json-download -name "*.json" 2>/dev/null || echo "No JSON files found in k6-json-download"
 
             echo ""
             echo "✅ Running k6 stats extractor..."
