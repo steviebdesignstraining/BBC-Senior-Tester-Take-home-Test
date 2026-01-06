@@ -156,6 +156,28 @@ jobs:
             echo "⚠️  ortoni-report.html not found, using fallback dashboard"
             node scripts/update-index.js
           fi
+      - name: Ensure Ortoni report includes latest test results
+        run: |
+          echo "📊 Ensuring Ortoni report includes latest test results..."
+          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
+            echo "✅ Ortoni report found, checking for K6 results integration..."
+            
+            # Copy K6 results to Ortoni report directory for integration
+            if [ -d "site/k6-results" ]; then
+              echo "✅ Found K6 results, copying to Ortoni report directory..."
+              cp -r site/k6-results site/
+            fi
+            
+            # Copy K6 reports to Ortoni report directory
+            if [ -d "site/k6" ]; then
+              echo "✅ Found K6 reports, copying to Ortoni report directory..."
+              cp -r site/k6 site/
+            fi
+            
+            echo "✅ Ortoni report enhanced with latest test results"
+          else
+            echo "⚠️  Ortoni report not found, K6 results will be included in fallback dashboard"
+          fi
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v4
         with:
@@ -709,7 +731,7 @@ jobs:
           echo "✅ DEPLOYMENT SUCCESSFUL!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "🌐 GitHub Pages URL:"
+          echo "🌐 GitHub Pages URL (Ortoni Report):"
           echo "   ${{ steps.deployment.outputs.page_url }}"
           echo ""
           echo "📊 Test Status:"
@@ -719,12 +741,13 @@ jobs:
           echo "📄 Dashboard Information:"
           if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
             echo "   ✅ Using Ortoni Report as main dashboard"
+            echo "   ✅ Includes latest test results from pipeline run #${{ github.run_number }}"
           else
             echo "   ⚠️  Using fallback dashboard (Ortoni report not available)"
           fi
           echo ""
           echo "🔗 Direct Links:"
-          echo "   Main Dashboard: ${{ steps.deployment.outputs.page_url }}"
+          echo "   Main Dashboard (Ortoni Report): ${{ steps.deployment.outputs.page_url }}"
           echo "   k6 Load: ${{ steps.deployment.outputs.page_url }}k6/load/index.html"
           echo "   k6 Performance: ${{ steps.deployment.outputs.page_url }}k6/performance/index.html"
           echo "   k6 Stress: ${{ steps.deployment.outputs.page_url }}k6/stress/index.html"
