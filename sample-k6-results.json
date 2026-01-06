@@ -1,0 +1,8 @@
+{"type":"Metric","metric":"http_req_duration","data":{"type":"summary","values":{"avg":245.67,"min":45.23,"med":187.45,"max":1234.56,"p(90)":356.78,"p(95)":487.23,"p(99)":856.34}}}
+{"type":"Metric","metric":"http_req_failed","data":{"type":"summary","values":{"rate":0.0234,"passes":1534,"fails":36}}}
+{"type":"Metric","metric":"http_req_rate","data":{"type":"summary","values":{"rate":15.67}}}
+{"type":"Metric","metric":"vus","data":{"type":"summary","values":{"current":10,"max":10}}}
+{"type":"Metric","metric":"iterations","data":{"type":"summary","values":{"count":234,"rate":2.34}}}
+{"type":"Point","metric":"http_req_duration","data":{"time":"2024-01-05T17:00:00.000Z","value":245.67}}
+{"type":"Point","metric":"http_req_failed","data":{"time":"2024-01-05T17:00:00.000Z","value":0.0234}}
+{"type":"Point","metric":"http_req_rate","data":{"time":"2024-01-05T17:00:00.000Z","value":15.67}}

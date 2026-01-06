@@ -20,28 +20,6 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
-    ['ortoni-report', {
-      open: 'never',
-      folderPath: 'reports',
-      filename: 'ortoni-report.html',
-      title: 'BBC Senior Tester Take-home Test - Ortoni Report',
-      projectName: 'BBC Senior Tester Take-home Test',
-      authorName: 'BBC',
-      testType: 'Functional',
-      base64Image: false,
-      stdIO: false,
-      meta: {
-        'Test Cycle': 'Dec, 2025',
-        version: '1.0.0',
-        description: 'BBC Senior Tester Take-home Test',
-        release: '1.0',
-        platform: process.platform,
-        'k6 Load Test Report': './reports/k6/load.html',
-        'k6 Stress Test Report': './reports/k6/stress.html',
-        'k6 Security Test Report': './reports/k6/security.html',
-        'k6 Performance Test Report': './reports/k6/performance.html',
-      },
-    }],
   ],
   /* Global timeout for each test in milliseconds */
   timeout: parseInt(process.env.TIMEOUT || '30000'),

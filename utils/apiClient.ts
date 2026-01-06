@@ -14,7 +14,7 @@ export async function apiClient(
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(envConfig.authKey && { api_key: envConfig.authKey })
+      ...(envConfig.authKey && { 'api_key': envConfig.authKey })
     },
     ...(body && { data: body })
   });

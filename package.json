@@ -4,19 +4,30 @@
   "description": "Technical assessment for BBC Senior/Principle Test Engineer position",
   "main": "index.js",
   "scripts": {
-    "test": "playwright test",
-    "test:api": "playwright test tests/api.spec.ts",
-    "test:integration": "playwright test tests/integration.spec.ts",
+    "test": "playwright test && node generate-ortoni-report.js && npx open-cli ortoni-report/ortoni-report.html",
+    "test:api": "playwright test tests/pet.spec.ts tests/user.spec.ts tests/store.spec.ts",
+    "test:integration": "playwright test tests/main.spec.ts",
     "test:report": "playwright test --reporter=html",
-    "test:load": "k6 run k6/load.test.js",
-    "test:stress": "k6 run k6/stress.test.js",
-    "test:performance": "k6 run k6/performance.test.js",
-    "test:security": "k6 run k6/security.test.js",
-    "generate-report": "node scripts/generate-report.js",
+    "test:load": "k6 run performance-tests/k6/load-test.js || node load-test-node.js",
+    "test:stress": "k6 run performance-tests/k6/stress-test.js || node stress-test-node.js",
+    "test:performance": "k6 run performance-tests/k6/performance-test.js || node performance-test-node.js",
+    "test:security": "k6 run performance-tests/k6/security-test.js || node security-test-node.js",
+    "test:load:node": "node load-test-node.js",
+    "test:stress:node": "node stress-test-node.js",
+    "test:performance:node": "node performance-test-node.js",
+    "test:security:node": "node security-test-node.js",
+    "test:k6": "npm run test:load && npm run test:stress && npm run test:performance && npm run test:security",
+    "test:k6:node": "npm run test:load:node && npm run test:stress:node && npm run test:performance:node && npm run test:security:node",
+    "test:all": "npm test && npm run test:k6",
+    "generate-report": "node scripts/generate-k6-reports.js",
+    "k6:html-report": "node scripts/k6-json-to-html.js",
     "update-dashboard": "node scripts/update-index.js",
     "fetch-github-data": "node scripts/fetch-github-data.js",
     "extract-k6-stats": "node scripts/extract-k6-stats.js",
     "ensure-k6-data": "node scripts/ensure-k6-data.js",
+    "ortoni:generate": "node generate-ortoni-report.js",
+    "ortoni:open": "npx open-cli ortoni-report/ortoni-report.html",
+    "ortoni:report": "npm run ortoni:generate && npm run ortoni:open",
     "setup": "npm install && npx playwright install",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -42,7 +53,8 @@
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.0.0",
-    "fs-extra": "^11.0.0"
+    "fs-extra": "^11.0.0",
+    "open-cli": "^8.0.0"
   },
   "engines": {
     "node": ">=16.0.0"

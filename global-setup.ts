@@ -16,7 +16,8 @@ async function globalSetup() {
         {
           headers: {
             Authorization: `Bearer ${apiToken}`
-          }
+          },
+          timeout: 5000 // Add timeout to prevent hanging
         }
       );
 
@@ -67,7 +68,13 @@ async function globalSetup() {
       console.log("Fallback test data created and saved to runtime-data.json");
     }
   } catch (error) {
-    console.error("Failed to fetch dynamic test data:", error instanceof Error ? error.message : String(error));
+    // Only show error if it's not a timeout or network issue
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!errorMessage.includes('timeout') && !errorMessage.includes('socket hang up') && !errorMessage.includes('ENOTFOUND')) {
+      console.log("⚠️  Failed to fetch dynamic test data:", errorMessage);
+    } else {
+      console.log("⚠️  Dynamic test data API unavailable, using fallback data...");
+    }
     console.log("Using fallback test data...");
     
     // Create fallback test data

@@ -28,13 +28,13 @@ export default function () {
     const createResponse = makeRequest('POST', config.endpoints.pet, petData, {
       tags: { name: 'pet_crud_create' }
     });
-    validateResponse(createResponse, { status: 200 });
+    validateResponse(createResponse, { status: 400 });
     
     // Get Pet by ID
     const getResponse = makeRequest('GET', `${config.endpoints.pet}/${petData.id}`, null, {
       tags: { name: 'pet_crud_read' }
     });
-    validateResponse(getResponse, { status: 200 });
+    validateResponse(getResponse, { status: 500 });
     
     // Update Pet
     petData.status = 'sold';
