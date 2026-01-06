@@ -69,7 +69,7 @@ jobs:
             --reporter=list \
             --reporter=ortoni-report \
             --reporter=html; then
-            
+          
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ PLAYWRIGHT TESTS PASSED"
@@ -222,23 +222,23 @@ jobs:
           echo ""
           echo "🔧 Test Configuration:"
           echo "  Test Type: ${{ matrix.test }}"
-          echo "  Test File: k6/${{ matrix.test }}.test.js"
+          echo "  Test File: performance-tests/k6/${{ matrix.test }}.test.js"
           echo "  BASE_URL: ${BASE_URL}"
           echo "  Output: k6-results/${{ matrix.test }}.json"
           echo ""
           
           # Check if backup test file exists first, then fallback to original
           TEST_FILE=""
-          if [ -f "k6/backup-${{ matrix.test }}.test.js" ]; then
-            TEST_FILE="k6/backup-${{ matrix.test }}.test.js"
+          if [ -f "performance-tests/k6/backup-${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="performance-tests/k6/backup-${{ matrix.test }}.test.js"
             echo "✅ Using backup test file: ${TEST_FILE}"
-          elif [ -f "k6/${{ matrix.test }}.test.js" ]; then
-            TEST_FILE="k6/${{ matrix.test }}.test.js"
+          elif [ -f "performance-tests/k6/${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="performance-tests/k6/${{ matrix.test }}.test.js"
             echo "✅ Using original test file: ${TEST_FILE}"
           else
             echo "❌ ERROR: No test file found!"
-            echo "   Checked: k6/backup-${{ matrix.test }}.test.js"
-            echo "   Checked: k6/${{ matrix.test }}.test.js"
+            echo "   Checked: performance-tests/k6/backup-${{ matrix.test }}.test.js"
+            echo "   Checked: performance-tests/k6/${{ matrix.test }}.test.js"
             exit 1
           fi
           
@@ -259,7 +259,7 @@ jobs:
             --summary-export=k6-results/${{ matrix.test }}-summary.json \
             --verbose \
             ${TEST_FILE}; then
-            
+          
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ K6 ${{ matrix.test }} TEST PASSED"
@@ -321,7 +321,7 @@ jobs:
             if timeout 300 node scripts/k6-json-to-html.js \
               k6-results/${{ matrix.test }}.json \
               site/k6/${{ matrix.test }}/index.html 2>&1; then
-              
+            
               if [ -f "site/k6/${{ matrix.test }}/index.html" ]; then
                 echo "✅ HTML report generated successfully"
                 echo "   Location: site/k6/${{ matrix.test }}/index.html"
