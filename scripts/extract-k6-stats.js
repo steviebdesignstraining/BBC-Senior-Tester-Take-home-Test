@@ -87,7 +87,7 @@ async function generateK6Summary(resultsDir, outputFile) {
     const summary = [];
 
     for (const test of tests) {
-        const file = path.join(resultsDir, `${test}.json`);
+        const file = path.join(resultsDir, `${test}-summary.json`);
         try {
             const stats = await extractK6Stats(file, test);
             if (stats) summary.push(stats);
