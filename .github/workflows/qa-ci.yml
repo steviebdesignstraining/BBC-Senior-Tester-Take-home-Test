@@ -84,20 +84,24 @@ jobs:
           fi
           
           # Generate Ortoni report if not already generated
-          if [ ! -f "ortoni-report.html" ]; then
+          if [ ! -f "ortoni-report/ortoni-report.html" ]; then
             echo "📄 Generating Ortoni report..."
-            npx ortoni generate --output ortoni-report.html || echo "⚠️ Ortoni generation failed"
+            npx ortoni generate --output ortoni-report/ortoni-report.html || echo "⚠️ Ortoni generation failed"
+          else
+            echo "✅ Ortoni report already exists at ortoni-report/ortoni-report.html"
           fi
         continue-on-error: true
       
       - name: Verify Ortoni report was generated
         run: |
           echo "🔍 Verifying Ortoni report generation..."
-          if [ -f "ortoni-report.html" ]; then
-            echo "✅ ortoni-report.html found ($(stat -c%s ortoni-report.html 2>/dev/null || stat -f%z ortoni-report.html) bytes)"
+          if [ -f "ortoni-report/ortoni-report.html" ]; then
+            echo "✅ ortoni-report/ortoni-report.html found ($(stat -c%s ortoni-report/ortoni-report.html 2>/dev/null || stat -f%z ortoni-report/ortoni-report.html) bytes)"
             echo "ORTONI_REPORT_EXISTS=true" >> $GITHUB_ENV
           else
-            echo "❌ ortoni-report.html NOT found"
+            echo "❌ ortoni-report/ortoni-report.html NOT found"
+            echo "Available files:"
+            find . -name "ortoni-report.html" -o -name "*ortoni*" 2>/dev/null || echo "No ortoni files found"
             echo "ORTONI_REPORT_EXISTS=false" >> $GITHUB_ENV
             echo "⚠️ Will use fallback dashboard"
           fi
@@ -112,16 +116,27 @@ jobs:
       - name: Copy Ortoni report as main index
         run: |
           echo "📄 Setting up Ortoni report as main GitHub Pages index..."
-          if [ -f "ortoni-report.html" ]; then
-            echo "✅ Copying ortoni-report.html to site/index.html"
-            cp ortoni-report.html site/index.html
+          if [ -f "ortoni-report/ortoni-report.html" ]; then
+            echo "✅ Found ortoni-report/ortoni-report.html"
+            echo "   Copying to site/index.html"
+            cp ortoni-report/ortoni-report.html site/index.html
             echo "✅ Ortoni report is now the main site index"
             
-            # Also keep a backup copy in reports
-            cp ortoni-report.html site/reports/ortoni-report.html
-            echo "✅ Backup copy saved to site/reports/"
+            # Copy the entire ortoni-report directory to preserve assets
+            if [ -d "ortoni-report" ]; then
+              echo "✅ Copying ortoni-report directory to site/reports/"
+              cp -r ortoni-report site/reports/
+            fi
+            
+            # Also copy any assets or resources
+            if [ -d "ortoni-report/assets" ]; then
+              echo "✅ Copying ortoni-report assets to site/"
+              cp -r ortoni-report/assets site/
+            fi
           else
-            echo "❌ ortoni-report.html not found, will use fallback"
+            echo "❌ ortoni-report/ortoni-report.html not found"
+            echo "🔍 Searching for ortoni files..."
+            find . -name "ortoni-report.html" -o -name "*ortoni*" 2>/dev/null || echo "No ortoni files found"
             echo "⚠️ Fallback dashboard will be generated in deploy job"
           fi
       
