@@ -12,109 +12,461 @@ permissions:
 
 env:
   REPORT_ROOT: site
+  GITHUB_SHA: ${{ github.sha }}
+  GITHUB_REF: ${{ github.ref }}
+  GITHUB_RUN_ID: ${{ github.run_id }}
+  GITHUB_RUN_NUMBER: ${{ github.run_number }}
+  GITHUB_WORKFLOW: ${{ github.workflow }}
+  GITHUB_EVENT_NAME: ${{ github.event_name }}
 
 jobs:
   playwright:
     name: Playwright UI & API Tests
     runs-on: ubuntu-latest
     environment: Playwright standard Env
-
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
       TEST_DATA_SCHEMA: ${{ secrets.TEST_DATA_SCHEMA }}
       TIMEOUT: ${{ secrets.TIMEOUT }}
-
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-
+      
       - name: Install dependencies
-        run: npm ci
-
+        run: npm install
+      
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
-
-      - name: Run Playwright tests (Ortoni only)
+      
+      - name: Run Playwright tests
         id: playwright_tests
         run: |
-          npx playwright test --reporter=ortoni-report
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "▶ STARTING PLAYWRIGHT TESTS"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "🔧 Test Configuration:"
+          echo "   BASE_URL: ${BASE_URL}"
+          echo "   TEST_DATA_API: ${TEST_DATA_API}"
+          echo "   TIMEOUT: ${TIMEOUT}"
+          echo ""
+          echo "📋 Test Files to Execute:"
+          find tests -name "*.spec.ts" -type f
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          
+          # Run tests with multiple reporters
+          if npx playwright test \
+            --reporter=list \
+            --reporter=ortoni-report \
+            --reporter=html; then
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ PLAYWRIGHT TESTS PASSED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
+            echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
+          else
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ PLAYWRIGHT TESTS FAILED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "PLAYWRIGHT_STATUS=FAILED" >> $GITHUB_ENV
+            echo "playwright_status=FAILED" >> $GITHUB_OUTPUT
+          fi
+          
+          # Generate Ortoni report if not already generated
+          if [ ! -f "ortoni-report.html" ]; then
+            echo "📄 Generating Ortoni report..."
+            npx ortoni generate --output ortoni-report.html || echo "⚠️ Ortoni generation failed"
+          fi
         continue-on-error: true
-
-      - name: Prepare site from Ortoni report
+      
+      - name: Verify Ortoni report was generated
         run: |
-          echo "📦 Preparing site from Ortoni report"
-          mkdir -p site
-          cp -r ortoni-report/* site/
-
-      - name: Upload Ortoni site artifact
+          echo "🔍 Verifying Ortoni report generation..."
+          if [ -f "ortoni-report.html" ]; then
+            echo "✅ ortoni-report.html found ($(stat -c%s ortoni-report.html 2>/dev/null || stat -f%z ortoni-report.html) bytes)"
+            echo "ORTONI_REPORT_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "❌ ortoni-report.html NOT found"
+            echo "ORTONI_REPORT_EXISTS=false" >> $GITHUB_ENV
+            echo "⚠️ Will use fallback dashboard"
+          fi
+      
+      - name: Prepare site structure
+        run: |
+          echo "📦 Preparing site directory structure..."
+          mkdir -p site/reports
+          mkdir -p site/k6-results
+          echo "✅ Site structure created"
+      
+      - name: Copy Ortoni report as main index
+        run: |
+          echo "📄 Setting up Ortoni report as main GitHub Pages index..."
+          if [ -f "ortoni-report.html" ]; then
+            echo "✅ Copying ortoni-report.html to site/index.html"
+            cp ortoni-report.html site/index.html
+            echo "✅ Ortoni report is now the main site index"
+            
+            # Also keep a backup copy in reports
+            cp ortoni-report.html site/reports/ortoni-report.html
+            echo "✅ Backup copy saved to site/reports/"
+          else
+            echo "❌ ortoni-report.html not found, will use fallback"
+            echo "⚠️ Fallback dashboard will be generated in deploy job"
+          fi
+      
+      - name: Copy additional Playwright reports
+        run: |
+          echo "📂 Copying additional Playwright reports..."
+          
+          # Copy playwright-report directory if it exists
+          if [ -d "playwright-report" ]; then
+            echo "✅ Found playwright-report/ directory"
+            mkdir -p site/reports/playwright
+            cp -r playwright-report/* site/reports/playwright/ 2>/dev/null || true
+          fi
+          
+          # Copy any other reports directory
+          if [ -d "reports" ]; then
+            echo "✅ Found reports/ directory"
+            cp -r reports/* site/reports/ 2>/dev/null || true
+          fi
+          
+          echo ""
+          echo "📊 Final site structure:"
+          ls -lh site/ 2>/dev/null || echo "Empty"
+          ls -lh site/reports/ 2>/dev/null || echo "No reports"
+      
+      - name: Upload site artifact
         uses: actions/upload-artifact@v4
         with:
-          name: site
+          name: playwright-site
           path: site
           retention-days: 30
-
+      
+      - name: Playwright test summary
+        if: always()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 PLAYWRIGHT TEST EXECUTION SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Status: ${{ env.PLAYWRIGHT_STATUS }}"
+          echo "Ortoni Report: ${{ env.ORTONI_REPORT_EXISTS }}"
+          echo ""
+          echo "Test Files Executed:"
+          find tests -name "*.spec.ts" -type f | while read file; do
+            echo "   - $file"
+          done
+          echo ""
+          echo "Reports Generated:"
+          find site -name "*.html" -type f | while read file; do
+            echo "   - $file ($(stat -c%s $file 2>/dev/null || stat -f%z $file) bytes)"
+          done
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
     outputs:
-      playwright_status: ${{ steps.playwright_tests.outcome }}
+      playwright_status: ${{ steps.playwright_tests.outputs.playwright_status }}
+      ortoni_exists: ${{ env.ORTONI_REPORT_EXISTS }}
 
   k6:
     name: k6 Performance Tests
     runs-on: ubuntu-latest
     needs: playwright
+    environment: Playwright standard Env
     continue-on-error: true
-
     strategy:
       matrix:
         test: [load, performance, stress, security]
-
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
-
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - uses: grafana/setup-k6-action@v1
-
+      
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+      
       - name: Run k6 ${{ matrix.test }} test
+        id: k6_test
         run: |
-          mkdir -p site/k6/${{ matrix.test }}
-          k6 run performance-tests/k6/${{ matrix.test }}.test.js \
-            --out json=site/k6/${{ matrix.test }}/results.json
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "▶ STARTING K6 ${{ matrix.test }} TEST"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          
+          # Find test file (backup or original)
+          TEST_FILE=""
+          if [ -f "performance-tests/k6/backup-${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="performance-tests/k6/backup-${{ matrix.test }}.test.js"
+          elif [ -f "performance-tests/k6/${{ matrix.test }}.test.js" ]; then
+            TEST_FILE="performance-tests/k6/${{ matrix.test }}.test.js"
+          else
+            echo "❌ ERROR: No test file found!"
+            exit 1
+          fi
+          
+          echo "✅ Using test file: ${TEST_FILE}"
+          mkdir -p k6-results
+          
+          # Run k6 test
+          if k6 run \
+            --out json=k6-results/${{ matrix.test }}.json \
+            --summary-export=k6-results/${{ matrix.test }}-summary.json \
+            --verbose \
+            ${TEST_FILE}; then
+            echo "✅ K6 ${{ matrix.test }} TEST PASSED"
+            echo "k6_status=PASSED" >> $GITHUB_OUTPUT
+          else
+            echo "❌ K6 ${{ matrix.test }} TEST FAILED"
+            echo "k6_status=FAILED" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: true
-
-      - name: Upload k6 results
+      
+      - name: Generate k6 HTML report
+        run: |
+          echo "📊 Generating HTML report for ${{ matrix.test }} test..."
+          mkdir -p site/k6/${{ matrix.test }}
+          
+          if [ -f "scripts/k6-json-to-html.js" ] && [ -f "k6-results/${{ matrix.test }}.json" ]; then
+            timeout 300 node scripts/k6-json-to-html.js \
+              k6-results/${{ matrix.test }}.json \
+              site/k6/${{ matrix.test }}/index.html 2>&1 || \
+              echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation failed.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+          else
+            echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Test completed but report files are missing.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
+          fi
+        continue-on-error: true
+      
+      - name: Upload k6 site artifact
         uses: actions/upload-artifact@v4
         with:
-          name: k6-${{ matrix.test }}
+          name: k6-site-${{ matrix.test }}
           path: site/k6/${{ matrix.test }}
+          retention-days: 30
+      
+      - name: Upload k6 JSON results
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-json-${{ matrix.test }}
+          path: k6-results/
+          retention-days: 30
 
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: [playwright, k6]
     if: always()
-
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: site
+          node-version: 20
+      
+      - name: Download Playwright site
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-site
           path: site
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
+      
+      - name: Download k6 site artifacts
+        run: |
+          echo "📥 Downloading k6 site artifacts..."
+          mkdir -p site/k6
+      
+      - name: Download k6 Load site
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-site-load
+          path: site/k6/load
+        continue-on-error: true
+      
+      - name: Download k6 Performance site
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-site-performance
+          path: site/k6/performance
+        continue-on-error: true
+      
+      - name: Download k6 Stress site
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-site-stress
+          path: site/k6/stress
+        continue-on-error: true
+      
+      - name: Download k6 Security site
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-site-security
+          path: site/k6/security
+        continue-on-error: true
+      
+      - name: Download k6 JSON results
+        run: |
+          echo "📥 Downloading k6 JSON results..."
+          mkdir -p site/k6-results
+      
+      - name: Download k6 Load JSON
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-load
+          path: site/k6-results
+        continue-on-error: true
+      
+      - name: Download k6 Performance JSON
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-performance
+          path: site/k6-results
+        continue-on-error: true
+      
+      - name: Download k6 Stress JSON
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-stress
+          path: site/k6-results
+        continue-on-error: true
+      
+      - name: Download k6 Security JSON
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-json-security
+          path: site/k6-results
+        continue-on-error: true
+      
+      - name: Verify Ortoni report is main index
+        run: |
+          echo "🔍 Verifying deployment setup..."
+          
+          if [ -f "site/index.html" ]; then
+            if grep -q "ortoni" site/index.html 2>/dev/null; then
+              echo "✅ site/index.html is the Ortoni report!"
+              echo "   Size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
+              echo "ORTONI_DEPLOYED=true" >> $GITHUB_ENV
+            else
+              echo "⚠️ site/index.html exists but is not Ortoni report"
+              echo "ORTONI_DEPLOYED=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "❌ site/index.html not found - generating fallback"
+            echo "ORTONI_DEPLOYED=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Generate fallback dashboard if needed
+        if: env.ORTONI_DEPLOYED != 'true'
+        env:
+          PLAYWRIGHT_STATUS: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "⚠️ Ortoni report not found, generating fallback dashboard..."
+          
+          # Run data fetchers and dashboard generator
+          node scripts/fetch-github-data.js || echo "GitHub data fetch failed"
+          node scripts/fetch-github-pipeline-data.js || echo "Pipeline data fetch failed"
+          node scripts/extract-k6-stats.js || echo "K6 stats extract failed"
+          node scripts/update-index.js || echo "Dashboard generation failed"
+          
+          if [ -f "site/index.html" ]; then
+            echo "✅ Fallback dashboard generated"
+          else
+            echo "❌ Dashboard generation failed - creating minimal HTML"
+            echo "<html><body><h1>Test Results</h1><p>Dashboard generation failed</p></body></html>" > site/index.html
+          fi
+      
+      - name: Verify final deployment
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 FINAL DEPLOYMENT VERIFICATION"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          
+          if [ ! -f "site/index.html" ]; then
+            echo "❌ CRITICAL: site/index.html not found!"
+            exit 1
+          fi
+          
+          echo "✅ site/index.html exists"
+          echo "   Size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
+          echo ""
+          
+          if grep -q "ortoni" site/index.html 2>/dev/null; then
+            echo "✅ Deploying ORTONI REPORT as main site"
+          else
+            echo "⚠️ Deploying fallback dashboard"
+          fi
+          echo ""
+          
+          echo "📂 Complete site structure:"
+          tree site -L 2 2>/dev/null || find site -type f
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site
-
-      - id: deploy
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
+      
+      - name: Deployment summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "🌐 GitHub Pages URL:"
+          echo "   ${{ steps.deployment.outputs.page_url }}"
+          echo ""
+          echo "📊 Test Status:"
+          echo "   Playwright: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}"
+          echo "   Ortoni Report: ${{ needs.playwright.outputs.ortoni_exists }}"
+          echo ""
+          
+          if [ "${{ env.ORTONI_DEPLOYED }}" = "true" ]; then
+            echo "✅ Main site is ORTONI REPORT"
+          else
+            echo "⚠️ Main site is fallback dashboard"
+          fi
+          echo ""
+          
+          echo "🔗 Direct Links:"
+          echo "   Main Dashboard: ${{ steps.deployment.outputs.page_url }}"
+          echo "   k6 Load: ${{ steps.deployment.outputs.page_url }}k6/load/"
+          echo "   k6 Performance: ${{ steps.deployment.outputs.page_url }}k6/performance/"
+          echo "   k6 Stress: ${{ steps.deployment.outputs.page_url }}k6/stress/"
+          echo "   k6 Security: ${{ steps.deployment.outputs.page_url }}k6/security/"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
