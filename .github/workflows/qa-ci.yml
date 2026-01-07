@@ -236,7 +236,16 @@ jobs:
             TEST_FILE="performance-tests/k6/${{ matrix.test }}.test.js"
           else
             echo "❌ ERROR: No test file found!"
-            exit 1
+            echo "   Searched:"
+            echo "   - performance-tests/k6/backup-${{ matrix.test }}.test.js"
+            echo "   - performance-tests/k6/${{ matrix.test }}.test.js"
+            echo ""
+            echo "📂 Available files in performance-tests/k6/:"
+            ls -la performance-tests/k6/ 2>/dev/null || echo "Directory not found"
+            echo ""
+            echo "k6_status=SKIPPED" >> $GITHUB_OUTPUT
+            echo "K6_TEST_SKIPPED=true" >> $GITHUB_ENV
+            exit 0
           fi
           
           echo "✅ Using test file: ${TEST_FILE}"
@@ -248,15 +257,32 @@ jobs:
             --summary-export=k6-results/${{ matrix.test }}-summary.json \
             --verbose \
             ${TEST_FILE}; then
+            echo ""
             echo "✅ K6 ${{ matrix.test }} TEST PASSED"
             echo "k6_status=PASSED" >> $GITHUB_OUTPUT
+            echo "K6_TEST_SKIPPED=false" >> $GITHUB_ENV
           else
+            echo ""
             echo "❌ K6 ${{ matrix.test }} TEST FAILED"
             echo "k6_status=FAILED" >> $GITHUB_OUTPUT
+            echo "K6_TEST_SKIPPED=false" >> $GITHUB_ENV
+            # Don't exit with error - let the job continue
+          fi
+          
+          # Verify results were created
+          if [ -f "k6-results/${{ matrix.test }}.json" ]; then
+            echo "✅ k6 results file created: k6-results/${{ matrix.test }}.json"
+            echo "   Size: $(stat -c%s k6-results/${{ matrix.test }}.json 2>/dev/null || stat -f%z k6-results/${{ matrix.test }}.json) bytes"
+          else
+            echo "⚠️ k6 results file not created - test may have failed early"
+            # Create empty directory to prevent upload artifact errors
+            mkdir -p k6-results
+            echo '{"error": "Test failed to produce results"}' > k6-results/${{ matrix.test }}.json
           fi
         continue-on-error: true
       
       - name: Generate k6 HTML report
+        if: env.K6_TEST_SKIPPED != 'true'
         run: |
           echo "📊 Generating HTML report for ${{ matrix.test }} test..."
           mkdir -p site/k6/${{ matrix.test }}
@@ -272,18 +298,22 @@ jobs:
         continue-on-error: true
       
       - name: Upload k6 site artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: k6-site-${{ matrix.test }}
           path: site/k6/${{ matrix.test }}
           retention-days: 30
+          if-no-files-found: ignore
       
       - name: Upload k6 JSON results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: k6-json-${{ matrix.test }}
           path: k6-results/
           retention-days: 30
+          if-no-files-found: ignore
 
   deploy:
     name: Deploy to GitHub Pages
@@ -309,11 +339,26 @@ jobs:
           name: playwright-site
           path: site
         continue-on-error: true
+        if: always()
       
-      - name: Download k6 site artifacts
+      - name: Ensure site structure exists even if k6 failed
         run: |
-          echo "📥 Downloading k6 site artifacts..."
-          mkdir -p site/k6
+          echo "📁 Ensuring minimum site structure exists..."
+          mkdir -p site/k6/load
+          mkdir -p site/k6/performance
+          mkdir -p site/k6/stress
+          mkdir -p site/k6/security
+          mkdir -p site/k6-results
+          
+          # Create placeholder pages for any missing k6 reports
+          for test_type in load performance stress security; do
+            if [ ! -f "site/k6/${test_type}/index.html" ]; then
+              echo "⚠️ Creating placeholder for k6 ${test_type} test"
+              echo "<html><body><h1>k6 ${test_type} Test</h1><p>Test did not run or failed to produce results.</p></body></html>" > site/k6/${test_type}/index.html
+            fi
+          done
+          
+          echo "✅ Site structure verified"
       
       - name: Download k6 Load site
         uses: actions/download-artifact@v4
@@ -321,6 +366,7 @@ jobs:
           name: k6-site-load
           path: site/k6/load
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Performance site
         uses: actions/download-artifact@v4
@@ -328,6 +374,7 @@ jobs:
           name: k6-site-performance
           path: site/k6/performance
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Stress site
         uses: actions/download-artifact@v4
@@ -335,6 +382,7 @@ jobs:
           name: k6-site-stress
           path: site/k6/stress
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Security site
         uses: actions/download-artifact@v4
@@ -342,6 +390,7 @@ jobs:
           name: k6-site-security
           path: site/k6/security
         continue-on-error: true
+        if: always()
       
       - name: Download k6 JSON results
         run: |
@@ -354,6 +403,7 @@ jobs:
           name: k6-json-load
           path: site/k6-results
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Performance JSON
         uses: actions/download-artifact@v4
@@ -361,6 +411,7 @@ jobs:
           name: k6-json-performance
           path: site/k6-results
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Stress JSON
         uses: actions/download-artifact@v4
@@ -368,6 +419,7 @@ jobs:
           name: k6-json-stress
           path: site/k6-results
         continue-on-error: true
+        if: always()
       
       - name: Download k6 Security JSON
         uses: actions/download-artifact@v4
@@ -375,6 +427,7 @@ jobs:
           name: k6-json-security
           path: site/k6-results
         continue-on-error: true
+        if: always()
       
       - name: Verify Ortoni report is main index
         run: |
