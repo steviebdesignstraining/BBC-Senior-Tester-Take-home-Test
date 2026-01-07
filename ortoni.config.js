@@ -8,7 +8,11 @@ module.exports = {
   output: {
     dir: './reports',
     filename: 'ortoni-report.html',
-    open: false // Will be handled by --launch flag
+    open: false, // Will be handled by --launch flag
+  showProject: true,
+  showTags: true,
+  showSteps: true,
+  showAttachments: true,
   },
   
   // Report metadata

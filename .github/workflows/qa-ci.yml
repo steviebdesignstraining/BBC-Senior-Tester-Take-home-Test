@@ -12,12 +12,6 @@ permissions:
 
 env:
   REPORT_ROOT: site
-  GITHUB_SHA: ${{ github.sha }}
-  GITHUB_REF: ${{ github.ref }}
-  GITHUB_RUN_ID: ${{ github.run_id }}
-  GITHUB_RUN_NUMBER: ${{ github.run_number }}
-  GITHUB_WORKFLOW: ${{ github.workflow }}
-  GITHUB_EVENT_NAME: ${{ github.event_name }}
 
 jobs:
   playwright:
@@ -32,187 +26,44 @@ jobs:
       TIMEOUT: ${{ secrets.TIMEOUT }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run Playwright tests
+      - name: Run Playwright tests (Ortoni only)
         id: playwright_tests
         run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "▶ STARTING PLAYWRIGHT TESTS"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "🔧 Test Configuration:"
-          echo "  BASE_URL: ${BASE_URL}"
-          echo "  TEST_DATA_API: ${TEST_DATA_API}"
-          echo "  TIMEOUT: ${TIMEOUT}"
-          echo ""
-          echo "📋 Test Files to Execute:"
-          find tests -name "*.spec.ts" -type f
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          
-          # Run tests with multiple reporters for better visibility
-          if npx playwright test \
-            --reporter=list \
-            --reporter=ortoni-report \
-            --reporter=html; then
-          
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "✅ PLAYWRIGHT TESTS PASSED"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "PLAYWRIGHT_STATUS=PASSED" >> $GITHUB_ENV
-            echo "playwright_status=PASSED" >> $GITHUB_OUTPUT
-            
-            # Generate Ortoni report if not already generated
-            if [ ! -f "ortoni-report.html" ]; then
-              echo "📄 Generating Ortoni report..."
-              npx ortoni generate --output ortoni-report.html
-            fi
-          else
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "❌ PLAYWRIGHT TESTS FAILED"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "PLAYWRIGHT_STATUS=FAILED" >> $GITHUB_ENV
-            echo "playwright_status=FAILED" >> $GITHUB_OUTPUT
-            
-            # Try to generate Ortoni report even if tests failed
-            if [ ! -f "ortoni-report.html" ]; then
-              echo "📄 Attempting to generate Ortoni report from failed tests..."
-              npx ortoni generate --output ortoni-report.html 2>/dev/null || echo "⚠️  Could not generate Ortoni report"
-            fi
-          fi
-          
-          echo ""
-          echo "📊 Test Results Summary:"
-          if [ -f "test-results/.last-run.json" ]; then
-            cat test-results/.last-run.json
-          fi
+          npx playwright test --reporter=ortoni-report
         continue-on-error: true
 
-      - name: Prepare reports directory
+      - name: Prepare site from Ortoni report
         run: |
-          echo "📦 Preparing reports directory..."
-          mkdir -p site/reports
-          
-          echo ""
-          echo "📂 Available report files:"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
-          # Check for ortoni report
-          if [ -f "ortoni-report.html" ]; then
-            echo "✅ ortoni-report.html found ($(stat -c%s ortoni-report.html 2>/dev/null || stat -f%z ortoni-report.html) bytes)"
-            cp ortoni-report.html site/reports/
-          else
-            echo "⚠️ ortoni-report.html not found"
-          fi
-          
-          # Check for reports directory
-          if [ -d "reports" ]; then
-            echo "✅ reports/ directory found"
-            echo "   Contents:"
-            ls -lh reports/ | head -20
-            cp -r reports/* site/reports/ 2>/dev/null || true
-          else
-            echo "⚠️ reports/ directory not found"
-          fi
-          
-          # Check for playwright-report
-          if [ -d "playwright-report" ]; then
-            echo "✅ playwright-report/ directory found"
-            mkdir -p site/reports
-            cp -r playwright-report site/reports/pet 2>/dev/null || true
-          fi
-          
-          echo ""
-          echo "📊 Final site/reports structure:"
-          ls -lh site/reports/ 2>/dev/null || echo "Empty"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Preparing site from Ortoni report"
+          mkdir -p site
+          cp -r ortoni-report/* site/
 
-      
-      - name: Copy Ortoni report to site root
-        run: |
-          echo "📄 Copying Ortoni report to site root..."
-          if [ -f "ortoni-report.html" ]; then
-            echo "✅ Found ortoni-report.html, copying to site/index.html"
-            mkdir -p site
-            cp ortoni-report.html site/index.html
-            echo "📄 Ortoni report copied successfully"
-          else
-            echo "⚠️  ortoni-report.html not found, using fallback dashboard"
-            node scripts/update-index.js
-          fi
-      - name: Ensure Ortoni report includes latest test results
-        run: |
-          echo "📊 Ensuring Ortoni report includes latest test results..."
-          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
-            echo "✅ Ortoni report found, checking for K6 results integration..."
-            
-            # Copy K6 results to Ortoni report directory for integration
-            if [ -d "site/k6-results" ]; then
-              echo "✅ Found K6 results, copying to Ortoni report directory..."
-              cp -r site/k6-results site/
-            fi
-            
-            # Copy K6 reports to Ortoni report directory
-            if [ -d "site/k6" ]; then
-              echo "✅ Found K6 reports, copying to Ortoni report directory..."
-              cp -r site/k6 site/
-            fi
-            
-            echo "✅ Ortoni report enhanced with latest test results"
-          else
-            echo "⚠️  Ortoni report not found, K6 results will be included in fallback dashboard"
-          fi
-      - name: Upload Playwright reports
+      - name: Upload Ortoni site artifact
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-reports
+          name: site
           path: site
           retention-days: 30
-      
-      - name: Playwright test summary
-        if: always()
-        run: |
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📊 PLAYWRIGHT TEST EXECUTION SUMMARY"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Status: ${{ env.PLAYWRIGHT_STATUS }}"
-          echo "Test Files Executed:"
-          find tests -name "*.spec.ts" -type f | while read file; do
-            echo "  - $file"
-          done
-          echo ""
-          echo "Reports Generated:"
-          find site -name "*.html" -type f | while read file; do
-            echo "  - $file ($(stat -c%s $file 2>/dev/null || stat -f%z $file) bytes)"
-          done
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     outputs:
-      playwright_status: ${{ steps.playwright_tests.outputs.playwright_status }}
+      playwright_status: ${{ steps.playwright_tests.outcome }}
 
   k6:
     name: k6 Performance Tests
     runs-on: ubuntu-latest
     needs: playwright
-    environment: Playwright standard Env
     continue-on-error: true
 
     strategy:
@@ -224,571 +75,46 @@ jobs:
       TEST_DATA_API: ${{ secrets.TEST_DATA_API }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Setup k6
-        uses: grafana/setup-k6-action@v1
+      - uses: grafana/setup-k6-action@v1
 
       - name: Run k6 ${{ matrix.test }} test
-        id: k6_test
         run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "▶ STARTING K6 ${{ matrix.test }} TEST"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "🔧 Test Configuration:"
-          echo "  Test Type: ${{ matrix.test }}"
-          echo "  Test File: performance-tests/k6/${{ matrix.test }}.test.js"
-          echo "  BASE_URL: ${BASE_URL}"
-          echo "  Output: k6-results/${{ matrix.test }}.json"
-          echo ""
-          
-          # Check if backup test file exists first, then fallback to original
-          TEST_FILE=""
-          if [ -f "performance-tests/k6/backup-${{ matrix.test }}.test.js" ]; then
-            TEST_FILE="performance-tests/k6/backup-${{ matrix.test }}.test.js"
-            echo "✅ Using backup test file: ${TEST_FILE}"
-          elif [ -f "performance-tests/k6/${{ matrix.test }}.test.js" ]; then
-            TEST_FILE="performance-tests/k6/${{ matrix.test }}.test.js"
-            echo "✅ Using original test file: ${TEST_FILE}"
-          else
-            echo "❌ ERROR: No test file found!"
-            echo "   Checked: performance-tests/k6/backup-${{ matrix.test }}.test.js"
-            echo "   Checked: performance-tests/k6/${{ matrix.test }}.test.js"
-            exit 1
-          fi
-          
-          echo ""
-          echo "📋 Test File Preview (first 30 lines):"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          head -30 ${TEST_FILE}
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "🚀 Executing k6 test..."
-          echo ""
-          
-          mkdir -p k6-results
-          
-          # Run k6 with verbose output
-          if k6 run \
-            --out json=k6-results/${{ matrix.test }}.json \
-            --summary-export=k6-results/${{ matrix.test }}-summary.json \
-            --verbose \
-            ${TEST_FILE}; then
-          
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "✅ K6 ${{ matrix.test }} TEST PASSED"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "k6_status=PASSED" >> $GITHUB_OUTPUT
-            
-            # Show summary if available
-            if [ -f "k6-results/${{ matrix.test }}-summary.json" ]; then
-              echo ""
-              echo "📊 Test Summary:"
-              cat k6-results/${{ matrix.test }}-summary.json | jq '.' || cat k6-results/${{ matrix.test }}-summary.json
-            fi
-          else
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "❌ K6 ${{ matrix.test }} TEST FAILED"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "k6_status=FAILED" >> $GITHUB_OUTPUT
-          fi
-          
-          echo ""
-          echo "📁 Generated files:"
-          ls -lh k6-results/
-        continue-on-error: true
-
-      - name: Generate k6 HTML report
-        run: |
-          echo "📊 Generating HTML report for ${{ matrix.test }} test..."
-          echo ""
-          
           mkdir -p site/k6/${{ matrix.test }}
-          
-          # Check for required files
-          echo "🔍 Checking for required files:"
-          if [ -f "scripts/k6-json-to-html.js" ]; then
-            echo "  ✅ scripts/k6-json-to-html.js found"
-          else
-            echo "  ❌ scripts/k6-json-to-html.js NOT found"
-          fi
-          
-          if [ -f "k6-results/${{ matrix.test }}.json" ]; then
-            SIZE=$(stat -c%s k6-results/${{ matrix.test }}.json 2>/dev/null || stat -f%z k6-results/${{ matrix.test }}.json)
-            echo "  ✅ k6-results/${{ matrix.test }}.json found (${SIZE} bytes)"
-            
-            # Check if file is too large (>100MB)
-            if [ "$SIZE" -gt 104857600 ]; then
-              echo "  ⚠️  WARNING: JSON file is very large (>100MB), report generation may fail"
-            fi
-          else
-            echo "  ❌ k6-results/${{ matrix.test }}.json NOT found"
-          fi
-          
-          echo ""
-          
-          if [ -f "scripts/k6-json-to-html.js" ] && [ -f "k6-results/${{ matrix.test }}.json" ]; then
-            echo "✅ Generating HTML report..."
-            
-            # Run with error handling - don't fail the job if report generation fails
-            if timeout 300 node scripts/k6-json-to-html.js \
-              k6-results/${{ matrix.test }}.json \
-              site/k6/${{ matrix.test }}/index.html 2>&1; then
-            
-              if [ -f "site/k6/${{ matrix.test }}/index.html" ]; then
-                echo "✅ HTML report generated successfully"
-                echo "   Location: site/k6/${{ matrix.test }}/index.html"
-                echo "   Size: $(stat -c%s site/k6/${{ matrix.test }}/index.html 2>/dev/null || stat -f%z site/k6/${{ matrix.test }}/index.html) bytes"
-              else
-                echo "⚠️  Report script ran but no HTML file was created"
-                echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation completed but no output file was created.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
-              fi
-            else
-              EXIT_CODE=$?
-              echo "⚠️  Report generation failed or timed out (exit code: ${EXIT_CODE})"
-              echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Report generation failed. The JSON file may be too large or malformed.</p><p>Check the raw k6 results in the artifacts.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
-            fi
-          else
-            echo "⚠️ Missing required files, creating placeholder..."
-            echo "<html><body><h1>k6 ${{ matrix.test }} Test</h1><p>Test completed but report files are missing.</p></body></html>" > site/k6/${{ matrix.test }}/index.html
-          fi
-          
-          echo ""
-          echo "📁 k6 report directory contents:"
-          ls -lh site/k6/${{ matrix.test }}/
-        continue-on-error: true
-      
-      - name: Generate k6 summary for Ortoni report
-        run: |
-          echo "📊 Generating k6 summary for Ortoni report..."
-          
-          # Create k6 summary data
-          mkdir -p site/k6-summary
-          
-          # Extract key metrics from k6 results using our custom script
-          if [ -f "scripts/extract-k6-stats.js" ]; then
-            echo "✅ Using custom k6 stats extractor..."
-            node scripts/extract-k6-stats.js
-          else
-            echo "⚠️  Custom k6 stats extractor not found, using basic extraction..."
-            
-            # Extract key metrics from k6 results
-            if [ -f "k6-results/${{ matrix.test }}-summary.json" ]; then
-              echo "✅ Found k6 summary file for ${{ matrix.test }}"
-              cp k6-results/${{ matrix.test }}-summary.json site/k6-summary/${{ matrix.test }}-summary.json
-            fi
-            
-            # Create a combined k6 summary
-            if [ -f "k6-results/${{ matrix.test }}.json" ]; then
-              echo "✅ Found k6 results file for ${{ matrix.test }}"
-              # Extract basic stats using jq if available
-              if command -v jq >/dev/null 2>&1; then
-                jq '{test: "${{ matrix.test }}", timestamp: now|strftime("%Y-%m-%d %H:%M:%S"), metrics: .}' k6-results/${{ matrix.test }}.json > site/k6-summary/${{ matrix.test }}-metrics.json 2>/dev/null || echo "jq not available for detailed metrics"
-              fi
-            fi
-          fi
+          k6 run performance-tests/k6/${{ matrix.test }}.test.js \
+            --out json=site/k6/${{ matrix.test }}/results.json
         continue-on-error: true
 
-      - name: Upload k6 report
+      - name: Upload k6 results
         uses: actions/upload-artifact@v4
         with:
-          name: k6-reports-${{ matrix.test }}
+          name: k6-${{ matrix.test }}
           path: site/k6/${{ matrix.test }}
-          retention-days: 30
-
-      - name: Upload k6 JSON results
-        uses: actions/upload-artifact@v4
-        with:
-          name: k6-json-${{ matrix.test }}
-          path: k6-results/${{ matrix.test }}.json
-          retention-days: 30
-      
-      - name: k6 test summary
-        if: always()
-        run: |
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📊 K6 ${{ matrix.test }} TEST SUMMARY"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Test Type: ${{ matrix.test }}"
-          echo "Status: ${{ steps.k6_test.outputs.k6_status }}"
-          echo ""
-          echo "Generated Files:"
-          ls -lh k6-results/ 2>/dev/null || echo "No results files"
-          echo ""
-          echo "HTML Report:"
-          ls -lh site/k6/${{ matrix.test }}/ 2>/dev/null || echo "No HTML report"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    outputs:
-      k6_status: ${{ steps.k6_test.outputs.k6_status }}
 
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: [playwright, k6]
     if: always()
+
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: 20
+          name: site
+          path: site
 
-      - name: Create site directory structure
-        run: |
-          echo "📁 Creating site directory structure..."
-          mkdir -p site/reports
-          mkdir -p site/k6/load
-          mkdir -p site/k6/performance
-          mkdir -p site/k6/stress
-          mkdir -p site/k6/security
-          mkdir -p site/k6-results
+      - uses: actions/configure-pages@v5
 
-      - name: Download Playwright reports
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-reports
-          path: playwright-download
-        continue-on-error: true
-
-      - name: Download k6 Load Test reports
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-reports-load
-          path: k6-download/load
-        continue-on-error: true
-
-      - name: Download k6 Performance Test reports
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-reports-performance
-          path: k6-download/performance
-        continue-on-error: true
-
-      - name: Download k6 Stress Test reports
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-reports-stress
-          path: k6-download/stress
-        continue-on-error: true
-
-      - name: Download k6 Security Test reports
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-reports-security
-          path: k6-download/security
-        continue-on-error: true
-
-      - name: Download k6 Load JSON results
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-json-load
-          path: k6-json-download/load
-        continue-on-error: true
-
-      - name: Download k6 Performance JSON results
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-json-performance
-          path: k6-json-download/performance
-        continue-on-error: true
-
-      - name: Download k6 Stress JSON results
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-json-stress
-          path: k6-json-download/stress
-        continue-on-error: true
-
-      - name: Download k6 Security JSON results
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-json-security
-          path: k6-json-download/security
-        continue-on-error: true
-
-      - name: Merge all artifacts
-        run: |
-          echo "📦 Merging all artifacts into site directory..."
-          
-          # Copy Playwright reports
-          if [ -d "playwright-download" ]; then
-            echo "✅ Merging Playwright reports..."
-            cp -r playwright-download/* site/ 2>/dev/null || true
-            ls -la site/reports/ || echo "No reports directory"
-          fi
-          
-          # Copy k6 reports
-          for test_type in load performance stress security; do
-            if [ -d "k6-download/${test_type}" ]; then
-              echo "✅ Merging k6 ${test_type} reports..."
-              cp -r k6-download/${test_type}/* site/k6/${test_type}/ 2>/dev/null || true
-            else
-              echo "⚠️ No k6 ${test_type} reports found"
-            fi
-          done
-
-          # Copy k6 JSON results
-          for test_type in load performance stress security; do
-            if [ -d "k6-json-download/${test_type}" ]; then
-              echo "✅ Merging k6 ${test_type} JSON results..."
-              # Copy raw JSON files (not summary files) to match extract-k6-stats.js expectations
-              cp k6-json-download/${test_type}/*.json site/k6-results/ 2>/dev/null || true
-            else
-              echo "⚠️ No k6 ${test_type} JSON results found"
-            fi
-          done
-          
-          # Also copy summary files that are generated by the k6 tests
-          for test_type in load performance stress security; do
-            if [ -f "k6-results/${test_type}-summary.json" ]; then
-              echo "✅ Copying k6 ${test_type} summary file..."
-              cp k6-results/${test_type}-summary.json site/k6-results/${test_type}-summary.json
-            fi
-          done
-          
-          # Ensure k6-results directory exists and list its contents
-          mkdir -p site/k6-results
-          echo ""
-          echo "📁 k6-results directory contents:"
-          ls -lh site/k6-results/ 2>/dev/null || echo "Directory empty or not found"
-          
-          echo ""
-          echo "📊 Final site structure:"
-          tree site -L 3 2>/dev/null || find site -type f
-
-      - name: Generate final dashboard
-        env:
-          PLAYWRIGHT_STATUS: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}
-          K6_STATUS: ${{ needs.k6.outputs.k6_status || 'UNKNOWN' }}
-          BASE_URL: ${{ secrets.BASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "🎨 Generating final dashboard..."
-          echo ""
-          echo "📍 Working directory: $(pwd)"
-          echo ""
-          echo "🔧 Environment:"
-          echo "  PLAYWRIGHT_STATUS: ${PLAYWRIGHT_STATUS}"
-          echo "  K6_STATUS: ${K6_STATUS}"
-          echo "  GITHUB_SHA: ${GITHUB_SHA}"
-          echo "  GITHUB_REF: ${GITHUB_REF}"
-          echo "  GITHUB_RUN_NUMBER: ${GITHUB_RUN_NUMBER}"
-          echo "  GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
-          echo ""
-          
-          # Check if Ortoni report already exists in site root
-          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
-            echo "✅ Ortoni report already exists in site/index.html"
-            echo "📄 Ortoni report size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
-            
-            # Ensure K6 results are available for the Ortoni report
-            echo "📊 Ensuring K6 results are available for Ortoni report..."
-            mkdir -p site/k6-results
-            cp k6-json-download/*/*.json site/k6-results/ 2>/dev/null || echo "No k6 JSON files found"
-            
-            # Also copy summary files that are generated by the k6 tests
-            for test_type in load performance stress security; do
-              if [ -f "k6-results/${test_type}-summary.json" ]; then
-                echo "✅ Copying k6 ${test_type} summary file to Ortoni report location..."
-                cp k6-results/${test_type}-summary.json site/k6-results/${test_type}-summary.json
-              fi
-            done
-            
-            echo "✅ Ortoni report enhanced with K6 results"
-          else
-            echo "⚠️  Ortoni report not found, generating fallback dashboard..."
-            
-            # Verify scripts exist
-            if [ ! -f "scripts/update-index.js" ]; then
-              echo "❌ ERROR: scripts/update-index.js not found!"
-              echo "Available scripts:"
-              ls -la scripts/
-              exit 1
-            fi
-            
-            if [ ! -f "scripts/fetch-github-data.js" ]; then
-              echo "❌ ERROR: scripts/fetch-github-data.js not found!"
-              exit 1
-            fi
-            
-            if [ ! -f "scripts/extract-k6-stats.js" ]; then
-              echo "❌ ERROR: scripts/extract-k6-stats.js not found!"
-              exit 1
-            fi
-            
-            if [ ! -f "scripts/fetch-github-pipeline-data.js" ]; then
-              echo "❌ ERROR: scripts/fetch-github-pipeline-data.js not found!"
-              exit 1
-            fi
-            
-            echo "✅ Running GitHub data fetcher..."
-            node scripts/fetch-github-data.js
-            
-            echo ""
-            echo "✅ Running pipeline data fetcher..."
-            node scripts/fetch-github-pipeline-data.js
-            
-            echo ""
-            echo "✅ Preparing k6 results for dashboard..."
-            mkdir -p site/k6-results
-            cp k6-json-download/*/*.json site/k6-results/ 2>/dev/null || echo "No k6 JSON files found"
-            
-            # Also copy summary files that are generated by the k6 tests
-            for test_type in load performance stress security; do
-              if [ -f "k6-results/${test_type}-summary.json" ]; then
-                echo "✅ Copying k6 ${test_type} summary file to dashboard location..."
-                cp k6-results/${test_type}-summary.json site/k6-results/${test_type}-summary.json
-              fi
-            done
-            
-            # Debug: Check what files are in k6-results
-            echo ""
-            echo "🔍 Debug: Checking k6-results directory..."
-            ls -lh site/k6-results/ 2>/dev/null || echo "k6-results directory is empty"
-            
-            # Debug: Check what files are in k6-json-download
-            echo ""
-            echo "🔍 Debug: Checking k6-json-download directory..."
-            find k6-json-download -name "*.json" 2>/dev/null || echo "No JSON files found in k6-json-download"
-
-            echo ""
-            echo "✅ Running k6 stats extractor..."
-            node scripts/extract-k6-stats.js
-
-            echo ""
-            echo "✅ Running dashboard generator..."
-            node scripts/update-index.js
-
-            if [ $? -eq 0 ]; then
-              echo ""
-              echo "✅ Fallback dashboard generated successfully!"
-            else
-              echo ""
-              echo "❌ Dashboard generation failed!"
-              exit 1
-            fi
-          fi
-          
-          # Ensure site/index.html exists
-          if [ ! -f "site/index.html" ]; then
-            echo "❌ ERROR: site/index.html not found after dashboard generation!"
-            exit 1
-          fi
-          
-          echo ""
-          echo "✅ Final dashboard ready!"
-          echo "📄 Final index.html size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
-          echo ""
-          echo "📄 Dashboard preview (first 40 lines):"
-          head -40 site/index.html
-
-      - name: Verify deployment files
-        run: |
-          echo "🔍 Verifying deployment files..."
-          echo ""
-          
-          if [ ! -f "site/index.html" ]; then
-            echo "❌ ERROR: site/index.html not found!"
-            exit 1
-          fi
-          
-          # Check if this is an Ortoni report
-          if grep -q "ortoni" site/index.html 2>/dev/null; then
-            echo "✅ Ortoni report detected in site/index.html"
-          else
-            echo "⚠️  Using fallback dashboard (not Ortoni report)"
-          fi
-          
-          echo "✅ Required files:"
-          echo "  - site/index.html ($(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes)"
-          
-          echo ""
-          echo "📂 All HTML files in site:"
-          find site -name "*.html" -type f
-          
-          echo ""
-          echo "📂 Complete site structure:"
-          tree site -L 2 2>/dev/null || ls -R site
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deploy
         uses: actions/deploy-pages@v4
-      - name: Final verification - Ensure Ortoni report is main site
-        run: |
-          echo "🔍 Final verification - Ensuring Ortoni report is main GitHub Pages site..."
-          
-          # Check what's in the site directory
-          echo "📁 Site directory contents:"
-          ls -la site/
-          
-          # Check if index.html exists and is the Ortoni report
-          if [ -f "site/index.html" ]; then
-            if grep -q "ortoni" site/index.html 2>/dev/null; then
-              echo "✅ site/index.html is the Ortoni report"
-              echo "📄 Ortoni report size: $(stat -c%s site/index.html 2>/dev/null || stat -f%z site/index.html) bytes"
-            else
-              echo "⚠️  site/index.html exists but is not the Ortoni report"
-              echo "This means the fallback dashboard was generated instead"
-            fi
-          else
-            echo "❌ ERROR: site/index.html not found!"
-            exit 1
-          fi
-          
-          echo "✅ GitHub Pages will serve site/index.html as the main site"
-
-      - name: Deployment summary
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "✅ DEPLOYMENT SUCCESSFUL!"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "🌐 GitHub Pages URL (Ortoni Report):"
-          echo "   ${{ steps.deployment.outputs.page_url }}"
-          echo ""
-          echo "📊 Test Status:"
-          echo "   Playwright: ${{ needs.playwright.outputs.playwright_status || 'UNKNOWN' }}"
-          echo "   k6: ${{ needs.k6.outputs.k6_status || 'UNKNOWN' }}"
-          echo ""
-          echo "📄 Dashboard Information:"
-          if [ -f "site/index.html" ] && grep -q "ortoni" site/index.html 2>/dev/null; then
-            echo "   ✅ Using Ortoni Report as main dashboard"
-            echo "   ✅ Includes latest test results from pipeline run #${{ github.run_number }}"
-          else
-            echo "   ⚠️  Using fallback dashboard (Ortoni report not available)"
-          fi
-          echo ""
-          echo "🔗 Direct Links:"
-          echo "   Main Dashboard (Ortoni Report): ${{ steps.deployment.outputs.page_url }}"
-          echo "   k6 Load: ${{ steps.deployment.outputs.page_url }}k6/load/index.html"
-          echo "   k6 Performance: ${{ steps.deployment.outputs.page_url }}k6/performance/index.html"
-          echo "   k6 Stress: ${{ steps.deployment.outputs.page_url }}k6/stress/index.html"
-          echo "   k6 Security: ${{ steps.deployment.outputs.page_url }}k6/security/index.html"
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
