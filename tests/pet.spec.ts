@@ -34,7 +34,7 @@ test.describe("Pet API Tests", () => {
     const petData = {
       id: Date.now(),
       name: testPetName,
-      photoUrls: ["https://www.istockphoto.com/photos/photo-image-art"],
+      photoUrls: testDataSchema.properties.testNewPetPhotoUrls.default,
       status: "available",
     };
 
@@ -131,7 +131,7 @@ test.describe("Pet API Tests", () => {
     const updatedData = {
       id: petId,
       name: "Updated Pet",
-      photoUrls: ["http://example.com/updated.jpg"],
+      photoUrls: testDataSchema.properties.testUpdatedPetPhotoUrls.default,
       status: "sold",
     };
 
@@ -393,7 +393,7 @@ test.describe("Pet API Tests", () => {
     const updatedData = {
       id: invalidId,
       name: "Updated Pet",
-      photoUrls: ["http://example.com/updated.jpg"],
+      photoUrls: testDataSchema.properties.testUpdatedPetPhotoUrls.default,
       status: "sold",
     };
 
@@ -555,7 +555,7 @@ test.describe("Pet API Tests", () => {
       const petData = {
         id: lifecyclePetId,
         name: testPetName,
-        photoUrls: ["http://example.com/photo.jpg"],
+        photoUrls: testDataSchema.properties.testNewPetPhotoUrls.default,
         status: "available",
       };
 
@@ -621,7 +621,7 @@ test.describe("Pet API Tests", () => {
       const updatedData = {
         id: createdPetId,
         name: "Updated Pet",
-        photoUrls: ["http://example.com/updated.jpg"],
+        photoUrls: testDataSchema.properties.testUpdatedPetPhotoUrls.default,
         status: "sold",
       };
 

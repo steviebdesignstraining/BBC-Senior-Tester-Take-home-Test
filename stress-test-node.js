@@ -12,7 +12,7 @@ function generateTestData(type) {
       return {
         id: id,
         name: 'StressTestPet',
-        photoUrls: ['http://example.com/photo.jpg'],
+        photoUrls: ['https://permutationgroup.com.au/wp-content/uploads/2023/04/Home-1-Slider-dog.png'],
         status: 'available'
       };
     case 'user':

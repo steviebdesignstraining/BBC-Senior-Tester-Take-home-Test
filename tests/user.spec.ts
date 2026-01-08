@@ -129,11 +129,11 @@ test.describe('User API Tests', () => {
     const updatedUserData = {
       id: Date.now(),
       username: username,
-      firstName: 'Updated',
-      lastName: 'User',
-      email: 'updated@example.com',
+      firstName: testFirstName,
+      lastName: testLastName,
+      email: testEmail,
       password: testPassword,
-      phone: '0987654321',
+      phone: testPhone,
       userStatus: 1
     };
 

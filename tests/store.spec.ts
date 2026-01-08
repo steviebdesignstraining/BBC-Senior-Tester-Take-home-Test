@@ -58,10 +58,10 @@ test.describe('Store API Tests', () => {
     const orderData = {
       id: Date.now(),
       petId: envConfig.petId || 1,
-      quantity: 1,
+      quantity: testDataSchema.properties.testOrderQuantity.default,
       shipDate: new Date().toISOString(),
-      status: 'placed',
-      complete: true
+      status: testDataSchema.properties.testOrderStatus.default,
+      complete: testDataSchema.properties.testOrderComplete.default
     };
 
     await test.step('Prepare order data', async () => {
@@ -88,11 +88,11 @@ test.describe('Store API Tests', () => {
       let responseBody: Record<string, unknown>;
       try {
         responseBody = await response.json();
-        createdOrderId = responseBody.id;
+        createdOrderId = responseBody.id as number;
         expect(responseBody.petId).toBe(Number(orderData.petId));
 
         // Write to environment for reuse
-        writeEnv('LAST_CREATED_ORDER_ID', responseBody.id);
+        writeEnv('LAST_CREATED_ORDER_ID', responseBody.id as number);
       } catch (error) {
         console.log('Validate Order Creation (non-JSON):', await response.text());
         responseBody = { id: orderData.id };
@@ -135,10 +135,10 @@ test.describe('Store API Tests', () => {
       const orderData = {
         id: Date.now(),
         petId: envConfig.petId || 1,
-        quantity: 1,
+        quantity: testDataSchema.properties.testOrderQuantity.default,
         shipDate: new Date().toISOString(),
-        status: 'placed',
-        complete: true
+        status: testDataSchema.properties.testOrderStatus.default,
+        complete: testDataSchema.properties.testOrderComplete.default
       };
 
       const createResponse = await storeApi.createOrder(orderData);
@@ -157,10 +157,10 @@ test.describe('Store API Tests', () => {
     const orderData = {
       id: Date.now(),
       petId: envConfig.petId || 1,
-      quantity: 1,
+      quantity: testDataSchema.properties.testOrderQuantity.default,
       shipDate: new Date().toISOString(),
-      status: 'placed',
-      complete: true
+      status: testDataSchema.properties.testOrderStatus.default,
+      complete: testDataSchema.properties.testOrderComplete.default
     };
 
     const createResponse = await storeApi.createOrder(orderData);
@@ -172,7 +172,7 @@ test.describe('Store API Tests', () => {
       console.log('Create Order Response (non-JSON):', await createResponse.text());
       createResponseBody = { id: orderData.id };
     }
-    const orderId = createResponseBody.id;
+    const orderId = createResponseBody.id as number;
 
     const response = await storeApi.deleteOrder(orderId.toString());
     let responseBody;
@@ -249,14 +249,14 @@ test.describe('Store API Tests', () => {
     await test.step('Prepare invalid order data', async () => {
       const invalidOrderData = {
         petId: envConfig.petId || 1,
-        quantity: 1
+        quantity: testDataSchema.properties.testInvalidOrderQuantity.default
       };
       console.log('Creating order with invalid data:', invalidOrderData);
     });
 
     const invalidOrderData = {
       petId: envConfig.petId || 1,
-      quantity: 1
+      quantity: testDataSchema.properties.testInvalidOrderQuantity.default
     };
 
     const response = await storeApi.createOrder(invalidOrderData);
@@ -339,10 +339,10 @@ test.describe('Store API Tests', () => {
       const orderData = {
         id: Date.now(),
         petId: envConfig.petId || 1,
-        quantity: 1,
+        quantity: testDataSchema.properties.testOrderQuantity.default,
         shipDate: new Date().toISOString(),
-        status: 'placed',
-        complete: true
+        status: testDataSchema.properties.testOrderStatus.default,
+        complete: testDataSchema.properties.testOrderComplete.default
       };
 
       const createResponse = await storeApi.createOrder(orderData);
@@ -357,11 +357,11 @@ test.describe('Store API Tests', () => {
       
       expect(createResponse.status()).toBeGreaterThanOrEqual(200);
       expect(createResponse.status()).toBeLessThan(500);
-      createdOrderId = createResponseBody.id || orderData.id;
+      createdOrderId = (createResponseBody.id as number) || orderData.id;
       expect(createResponseBody.petId).toBe(Number(orderData.petId));
       
       // Write to environment for reuse
-      writeEnv('LAST_CREATED_ORDER_ID', createResponseBody.id);
+      writeEnv('LAST_CREATED_ORDER_ID', createResponseBody.id as number);
     });
 
     await test.step('Get order', async () => {
@@ -412,9 +412,9 @@ test.describe('Store API Tests', () => {
       // Create a pet
       const petData = {
         id: Date.now(),
-        name: 'Integration Test Pet',
-        photoUrls: ['http://example.com/integration-pet.jpg'],
-        status: 'available'
+        name: testDataSchema.properties.testIntegrationPetName.default,
+        photoUrls: testDataSchema.properties.testPetPhotoUrls.default,
+        status: testDataSchema.properties.testPetStatus.default
       };
 
       const petResponse = await petApi.createPet(petData);
@@ -429,7 +429,7 @@ test.describe('Store API Tests', () => {
       
       expect(petResponse.status()).toBeGreaterThanOrEqual(200);
       expect(petResponse.status()).toBeLessThan(500);
-      integrationPetId = petResponseBody?.id || petData.id;
+      integrationPetId = (petResponseBody?.id as number) || petData.id;
     });
 
     await test.step('Create order for integration pet', async () => {
@@ -437,10 +437,10 @@ test.describe('Store API Tests', () => {
       const orderData = {
         id: Date.now(),
         petId: integrationPetId,
-        quantity: 1,
+        quantity: testDataSchema.properties.testOrderQuantity.default,
         shipDate: new Date().toISOString(),
-        status: 'placed',
-        complete: true
+        status: testDataSchema.properties.testOrderStatus.default,
+        complete: testDataSchema.properties.testOrderComplete.default
       };
 
       const orderResponse = await storeApi.createOrder(orderData);
@@ -475,7 +475,7 @@ test.describe('Store API Tests', () => {
 
     await test.step('Clean up integration test data', async () => {
       // Clean up
-      await storeApi.deleteOrder(orderResponseBody.id.toString());
+      await storeApi.deleteOrder((orderResponseBody.id as number).toString());
       await petApi.deletePet(integrationPetId.toString());
     });
   });

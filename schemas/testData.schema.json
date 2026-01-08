@@ -39,6 +39,60 @@
       "type": "string",
       "enum": ["Buddy", "Max", "Charlie", "Jack", "Cooper", "Rocky", "Toby", "Bear", "Duke", "Teddy"],
       "description": "Common pet names"
+    },
+    "testOrderQuantity": {
+      "type": "number",
+      "default": 1,
+      "description": "Default order quantity"
+    },
+    "testOrderStatus": {
+      "type": "string",
+      "default": "placed",
+      "description": "Default order status"
+    },
+    "testOrderComplete": {
+      "type": "boolean",
+      "default": true,
+      "description": "Default order complete flag"
+    },
+    "testIntegrationPetName": {
+      "type": "string",
+      "default": "Integration Test Pet",
+      "description": "Name for integration test pet"
+    },
+    "testPetPhotoUrls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["https://permutationgroup.com.au/wp-content/uploads/2023/04/Home-1-Slider-dog.png"],
+      "description": "Photo URLs for integration test pet"
+    },
+    "testPetStatus": {
+      "type": "string",
+      "default": "available",
+      "description": "Status for test pets"
+    },
+    "testInvalidOrderQuantity": {
+      "type": "number",
+      "default": 1,
+      "description": "Quantity for invalid order test"
+    },
+    "testNewPetPhotoUrls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["https://www.istockphoto.com/photos/photo-image-art"],
+      "description": "Photo URLs for new pets"
+    },
+    "testUpdatedPetPhotoUrls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["https://www.allianz.ie/blog/your-pet/choosing-a-pedigree-pet/_jcr_content/root/stage/stageimage.img.82.3360.jpeg/1727944382981/cute-happy-pup.jpeg"],
+      "description": "Photo URLs for updated pets"
     }
   },
   "required": ["testUsername", "testPassword", "testFirstName", "testLastName", "testEmail", "testPhone", "testPetName"]

@@ -256,7 +256,7 @@ async function runLargePayloadTests() {
   const largePayload = {
     id: Math.floor(Math.random() * 1000000),
     name: 'A'.repeat(10000), // 10KB string
-    photoUrls: ['http://example.com/photo.jpg'],
+    photoUrls: ['https://permutationgroup.com.au/wp-content/uploads/2023/04/Home-1-Slider-dog.png'],
     status: 'available'
   };
 
@@ -275,7 +275,7 @@ async function runLargePayloadTests() {
   const veryLargePayload = {
     id: Math.floor(Math.random() * 1000000),
     name: 'A'.repeat(50000), // 50KB string
-    photoUrls: ['http://example.com/photo.jpg'],
+    photoUrls: ['https://permutationgroup.com.au/wp-content/uploads/2023/04/Home-1-Slider-dog.png'],
     status: 'available'
   };
 
